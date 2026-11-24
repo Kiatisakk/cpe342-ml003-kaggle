@@ -1,0 +1,22 @@
+﻿# Secrets & credentials
+kaggle.json
+.env
+*.env
+
+# Competition dataset & generated predictions
+cpe342-kaggle-main/
+submission.csv
+**/task*_predictions.csv
+**/task4_artifacts/
+
+# Python / Jupyter / ML caches
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+catboost_info/
+*.pt
+*.pth
+*.npy
+*.npz
+*.zip
+.DS_Store
