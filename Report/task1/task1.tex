@@ -208,7 +208,7 @@ Final A/B/C Ensemble & \textbf{0.89501} & \textbf{0.83979} \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{fig_t1_f2_operating_point.png}
-\caption{OOF binary F2 and macro F2 against the fraction flagged, from the local pipeline's clean ECDF blend (threshold 0.3769, 62.4\% OOF optimum, 59.33\% flagged on test). The final notebook reports 0.37264 and 59.81\%; the curve shape is the same.}
+\caption{OOF binary F2 and macro F2 against the fraction flagged, from a re-run of the same pipeline. The marker is the submitted notebook's threshold (0.37264), which flags 62.80\% of OOF accounts and 59.81\% of test accounts. Re-runs on another CPU give a threshold within about 0.005 because multithreaded tree training is not bit-reproducible; the curve shape is unchanged.}
 \label{fig:t1-operating}
 \end{figure}
 
@@ -234,7 +234,7 @@ The final blend improves OOF ROC-AUC by 0.00019 over Model A (Table~\ref{tab:t1-
 \label{fig:t1-masking}
 \end{figure}
 
-Figure~\ref{fig:t1-masking} shows that masking helps mostly where information is scarce: the more signal features a row is missing, the larger the gain, which matches the reason we trained on masked copies. The overall effect is small (OOF AUC 0.89403 to 0.89446).
+Figure~\ref{fig:t1-masking} shows that masking helps mostly where information is scarce: the more signal features a row is missing, the larger the gain, which matches the reason we trained on masked copies. The overall effect is small (OOF AUC 0.89403 to 0.89446). These ablation numbers come from a re-run on different hardware, so small differences from the submitted notebook's scores are expected.
 
 \paragraph{Where errors can concentrate.} The overlap in Figure~\ref{fig:t1-ranges} identifies feature ranges worth examining for classification errors. The reported results are aggregate scores. To determine where errors are concentrated, we would need to count false positives and false negatives by feature range and missingness pattern.
 

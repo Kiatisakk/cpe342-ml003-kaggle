@@ -23,3 +23,14 @@ Multi-scale test-time augmentation of the LoRA model,LB public,-0.00013,dropped,
 Logit-adjusted training instead of post-hoc prior,LB public,-0.00088,dropped,CLAUDE.md LB log (sub_v86b vs v81b),Fold 0: 34 errors vs 30
 Concat-feature MLP head on frozen features,LB public,0.00002,dropped,CLAUDE.md LB log (sub_v59r3_noMLP vs v59r3),OOF and hard-row OOF gains did not reach the LB
 Final recipe: temperature calibration + entropy-weighted pooling + multi-depth LoRA,LB public,0.00005,kept,git commit ce783a5 (best LB 0.87351) vs sub_v85a,Reference submission sub_v90f; intermediate v88-v91 steps are not in the log
+Colour-augmented EVA02-S (crop/gamma/saturation) as 3rd model,LB public,-0.00054,dropped,CLAUDE.md LB log (sub_v26_T4coloraug vs v25a),OOF 0.98334; wider colour aug did not fix the test shift
+WiSE-FT interpolation of the ConvNeXt-S fine-tune,OOF macro F1 (3 folds),,dropped,CLAUDE.md (13 Nov WiSE-FT note),OOF 0.9401/0.9738/0.9823 for a=.3/.5/.7; test predictions did not move toward the frozen heads; not submitted
+Random-crop + CutMix arm on scene folds (ConvNeXt-S),scene-CV macro F1 (3 folds),-0.0076,dropped,CLAUDE.md scene-CV fine-tune result,0.9559 vs 0.9635 for the base recipe
+ConvNeXt-S with in22k weights (silent fallback) in a 3-way blend,nested OOF macro F1,-0.00024,dropped,CLAUDE.md 12 Nov CPU/GPU runs,3-way blend 0.99146 vs 2-way 0.99170; OOF of the run 0.9754
+DINOv2-L (fold 0 only) as 6th fine-tuned model,LB public,-0.00001,dropped,CLAUDE.md LB log (sub_v58e vs v56),Noise
+Fine-tuned share 0.4 instead of 0.5 (7B share 0.7),LB public,-0.00034,dropped,CLAUDE.md LB log (sub_v76a_em_T5acct vs v74b),Scene-fold proxy had predicted a gain (0.9742 vs 0.9724)
+Train-prior exponent a = 0.5 instead of 1,LB public,0.00137,dropped,CLAUDE.md LB log (sub_v82a vs v80a),a = 1 (uniform target prior) scored +0.00213
+LoRA weight 0.9 instead of 0.85 with the train prior,LB public,-0.00002,dropped,CLAUDE.md LB log (sub_v83_lora90 vs v82b),Flat top
+LoRA multi-depth adapters as extra members (c24f12 63 errors and c40f28 69 errors on fold 0),scene fold 0 errors,,kept,CLAUDE.md LoRA queue results (20 Nov),Weaker than l75 (42) on fold 0; kept in the final recipe only with weight 0.04 each
+Concat-feature MLP head instead of linear heads,random OOF macro F1,0.0053,dropped,CLAUDE.md 16 Nov concat MLP note,OOF .9826 vs .9632 for the linear head but the LB gave +0.00002 when removed
+Variants of the v85a recipe (soup + 2-view head; raw l75; v74b base blend; soup + l75la),LB public,-0.00036,dropped,CLAUDE.md LB log (v87 round),Four variants scored 0.87310-0.87342 versus 0.87346

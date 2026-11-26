@@ -15,20 +15,55 @@ Each account has 123 columns: 29 behavioural metrics recorded in four periods (s
 
 \subsubsection{EDA Findings}
 
-Without labels, EDA is the model. We ask one question of every view of the data: is there a population separated from the normal bulk by an empty gap, a break in time, or a joint box? The data are synthetic, so we expected normal accounts to be generated with near-independent features and each anomaly type to be injected by an explicit mechanism that breaks that independence.
+Without labels, EDA is the model. We ask one question of every view of the data: is there a population separated from the normal bulk by an empty gap, a break in time, or a joint box? The data are synthetic, so we expected normal accounts to be generated with near-independent features and each anomaly type to be injected by an explicit mechanism that breaks that independence. The subsections below go through the seven groups we found, in the order in which we found them: two groups that change over time (takeover and behaviour shock), four stationary clusters that sit in an empty gap of one feature (bot, low activity, low communication, low stability), and one box that needs three features together. Each group has its own figure showing how it separates from the normal accounts and where the cut sits, followed by what we saw and what we decided. Figures~\ref{fig:t5-overlap} to~\ref{fig:t5-gapscan} at the end of this section show how the groups fit together and what, if anything, is left.
 
 \paragraph{Sudden breaks between periods.} Takeovers should show up as a change between the first two periods (the account's baseline) and the last two. For each account we measured the largest distance of the period-3/4 login coordinates from the home position (mean of periods 1 and 2) and, for every metric, the robust $z$-score (median and MAD) of the period-3/4 change. We then took the second-largest $z$ across metrics so that one noisy metric cannot trigger the rule.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{fig_t5_shock.png}
-\caption{Left: largest login-position jump in periods 3/4 (log scale). Right: second-largest robust $z$ of the period-3/4 change across metrics. Both have an empty band between the normal bulk and a long tail of shocked accounts.}
+\caption{Left: largest login-position jump in periods 3/4 (log scale). Right: second-largest robust $z$ of the period-3/4 change across metrics. Both have a low-density band between the normal bulk and a long tail of shocked accounts.}
 \label{fig:t5-shock}
 \end{figure}
 
-In Figure~\ref{fig:t5-shock}, normal accounts stay within about 3 degrees of home and have $z_2<4$. A separate population jumps by more than 5 degrees (425 accounts) or moves at least two metrics at once with $z_2>6$ (816 accounts); a few accounts also report an impossible latitude ($|\text{lat}|>90$). We cut inside the empty band, and the three conditions together flag 827 accounts. The security flags are not used to decide, but they confirm the population: \feat{password_changed}, \feat{vpn_usage} and \feat{mass_item_sale} are enriched almost only inside this group.
+In Figure~\ref{fig:t5-shock}, normal accounts stay within 3 degrees of home, and 99.5\% of the accounts outside the shock group have $z_2<4$. A separate population jumps by more than 5 degrees (425 accounts) or moves at least two metrics at once with $z_2>6$ (816 accounts); a few accounts also report an impossible latitude ($|\text{lat}|>90$). We cut inside the low-density band, and the three conditions together flag 827 accounts. The next two subsections look at the two time-varying groups separately.
 
-\paragraph{Stationary clusters.} A bot or a dormant account does not change over time, so period-to-period change cannot find it. We scanned the four-period mean of every metric and every static feature for a histogram with an empty gap.
+\paragraph{Group 1: account takeover (location jump).} A hijacked account is suddenly used from somewhere else. Figure~\ref{fig:t5-takeover} shows the three views we used.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t5_takeover.png}
+\caption{Account takeover. (a) Home position of normal accounts (grey) and, for 70 of the 425 jumpers, an arrow from the home position to the farthest period-3/4 login. (b) Largest period-3/4 distance from home (log-spaced axis); the shaded band between 3.0 and 6.8 degrees contains no account and the dashed line is the 5-degree cut. (c) All login latitudes: 71 cells lie outside $\pm90$ degrees (pink). The counts come from the 12 November test file and the rule of the submission notebook.}
+\label{fig:t5-takeover}
+\end{figure}
+
+\textbf{What we saw.} Panel (a) shows that the jumpers land almost anywhere on the map: the destination is unrelated to the home position, and the median jump is 64 degrees (5th to 95th percentile 30 to 110 degrees). Normal accounts wander by less than 3 degrees. In panel (b) the two populations are separated by a band between 3.0 and 6.8 degrees in which no account lies, so the exact cut does not matter. Panel (c) shows a third kind of takeover signal: 71 accounts report a latitude outside the valid range (between $-106$ and $140$ degrees); 65 of them are not caught by the jump test because the invalid cell is masked out of the distance computation. In total 490 accounts meet the location condition (425 jumpers plus the 65 invalid-latitude accounts); 479 of them also move several metrics, and the security flags agree: \feat{password_changed} is set for 58\% of them (5\% of normal accounts), \feat{vpn_usage} for 54\% (15\%) and \feat{mass_item_sale} for 40\% (2\%) (Figure~\ref{fig:t5-flags}).
+
+\textbf{What we decided.} Flag every account whose period-3/4 login is more than 5 degrees from home, or whose latitude is invalid. Placing the cut in the empty band keeps it independent of the unknown share of takeovers, and a looser cut (2 to 5 degrees) adds only accounts that the log of Section~\ref{sec:t5-failed} shows to be mostly normal.
+
+\paragraph{Group 2: account selling (behaviour shock).} A sold or shared account does not necessarily move, but the new owner plays differently: skill, friends and spending change at the same time. We measured the robust $z$ of the period-3/4 change of every metric and counted the metrics that exceed 6.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t5_selling.png}
+\caption{Behaviour shock. (a) Largest jump from home against the second-largest robust $z$; the dashed lines are the two cuts. Accounts with a jump and a shock (pink), a shock only (blue) and a jump only (amber) form separate clouds; grey is a sample of normal accounts. (b) Number of metrics with $z>6$ per account (log scale); the rule needs at least two (pink). (c) Share of accounts in each of the two shock groups for which a metric has $z>6$; only 13 of the 27 non-geographic metrics ever do.}
+\label{fig:t5-selling}
+\end{figure}
+
+\textbf{What we saw.} In panel (a), the normal accounts form a compact cloud at $z_2$ below about 5; the largest unflagged value is 5.4 and the smallest flagged value is 6.3, and most shocked accounts are far higher (462 above 10), so the cut at 6 sits at the edge of a crowded gap and not in a wide one. Of the 816 accounts above the cut, 479 also jump (pink) and 337 do not (blue); only 11 accounts jump without a shock (amber). Panel (b) shows that the shock is multi-metric: of the accounts that shock at all, 128 shock two metrics, 374 shock three, and 78, 118, 89 and 29 shock four, five, six and seven; 165 accounts have exactly one metric above 6, which is not enough. Panel (c) shows that the two groups shock different metrics. Accounts that also jump change \feat{location_changes} (96\%), \feat{currency_transfers} (55\%), \feat{play_pattern_consistency} (52\%) and \feat{purchase_frequency} (39\%); accounts that only shock change \feat{skill_trajectory}, \feat{friend_removes} and \feat{skill_rating} (about 88\% each), \feat{accuracy_mean} (66\%), \feat{kda_mean} (59\%) and \feat{friend_adds} (56\%). The first pattern is what a new location with new transactions looks like; the second is what a different person playing the same account looks like (skill jumps, the friend list is rebuilt). All 14 other metrics (every standard deviation, \feat{activity_level}, \feat{login_count} and others) never shock.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{fig_t5_flags.png}
+\caption{Share of accounts with each security flag set, by group. The flags were not used to build any detector. Missing flags are excluded from each share. Normal and stationary accounts have the same flag rates; the flags are enriched in the location-jump group and weakly in the shock-only group.}
+\label{fig:t5-flags}
+\end{figure}
+
+Figure~\ref{fig:t5-flags} checks the group against the four security flags, which the rule does not use. Accounts that jump are strongly enriched in \feat{password_changed}, \feat{vpn_usage} and \feat{mass_item_sale}; accounts that only shock are mildly enriched in \feat{password_changed} (14\% against 5\%) and \feat{mass_item_sale} (9\% against 2\%) and not at all in \feat{vpn_usage}; \feat{suspicious_login_time} is not enriched anywhere, and the stationary clusters look exactly like normal accounts for every flag. The flags therefore confirm that the jump-and-shock group is a real population, and they show that the shock-only group is a weaker, different one.
+
+\textbf{What we decided.} Flag an account when at least two metrics have $z>6$. Requiring two metrics removes the 165 single-metric accounts, which are the typical noise of a heavy-tailed metric. We did not use the flags as a rule because the stationary anomalies (which dominate the 2,104 flagged rows) do not carry them, and because for most groups they carry no information beyond the behaviour itself.
+
+\paragraph{Stationary clusters.} A bot or a dormant account does not change over time, so period-to-period change cannot find it. We scanned the four-period mean of every metric and every static feature for a histogram with an empty gap. Figure~\ref{fig:t5-gaps} shows the four features in which a small group sits behind such a gap; the next four subsections look at each group in turn.
 
 \begin{figure}[H]
 \centering
@@ -37,18 +72,121 @@ In Figure~\ref{fig:t5-shock}, normal accounts stay within about 3 degrees of hom
 \label{fig:t5-gaps}
 \end{figure}
 
-Figure~\ref{fig:t5-gaps} shows four such features. In each, no account lies inside the gap we checked (0.5 to 1.5 for \feat{login_time_variance}, 0.30 to 0.40 for \feat{activity_level}, 0.12 to 0.22 for \feat{communication_frequency}, 0.45 to 0.60 for \feat{behavior_stability}), so the exact cut position does not matter. The clusters hold 207, 265, 263 and 246 accounts; we call them \feat{bot}, \feat{lowact}, \feat{lowcomm} and \feat{lowstab}. A full scan of every other mean, standard deviation and static feature found no further isolated cluster.
+Figure~\ref{fig:t5-gaps} shows that in each feature no account lies inside the gap (0.47 to 1.67 for \feat{login_time_variance}, 0.27 to 0.41 for \feat{activity_level}, 0.09 to 0.24 for \feat{communication_frequency}, 0.40 to 0.70 for \feat{behavior_stability}), so the exact cut position does not matter. The clusters hold 207, 265, 263 and 246 accounts; we call them \feat{bot}, \feat{lowact}, \feat{lowcomm} and \feat{lowstab}. The four groups below use the same format: (a) the histogram with the gap and the cut; (b) a two-dimensional view with the single most informative second feature; (c) the six other features in which the group differs most from the normal accounts, measured by the Kolmogorov--Smirnov distance (0 is identical, 1 is fully separated).
 
-\paragraph{A box that no single feature shows.} A fifth stationary type hides inside the normal range of every individual feature. It appears only when three statistics are examined together: at all four periods, \feat{performance_stability} lies in $[0.85,0.95]$, \feat{kda_std} in $[0.70,1.00]$ and \feat{accuracy_std} in $[9,12]$.
+\paragraph{Group 3: bot (low login-time variance).}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_t5_bot.png}
+\caption{Bot cluster (207 accounts). (a) Mean \feat{login_time_variance} (log counts): cluster maximum 0.47, normal minimum 1.67, cut 1.0. (b) Against mean \feat{ip_hash_entropy}. (c) The six features that differ most from normal accounts.}
+\label{fig:t5-bot}
+\end{figure}
+
+\textbf{What we saw.} The bot cluster is the cleanest of all: it is separated almost completely (KS distance 0.99 or more) in five other features, not only in the one we cut on. Its mean \feat{login_time_variance} has a median of 0.31 (normal 4.98), mean \feat{ip_hash_entropy} 0.11 (normal 0.55), mean \feat{kda_std} 0.10 (normal 0.50) and mean \feat{session_duration_std} 2.9 (normal 24.9), while \feat{play_pattern_consistency} (0.97 against 0.75) and \feat{performance_stability} (0.97 against 0.79) are high. A script logs in at the same time, from the same address, plays the same way and never varies, which is what these numbers describe. In panel (b) the cluster and the normal accounts do not even touch.
+
+\textbf{What we decided.} Flag \feat{login_time_variance} below 1.0 (207 accounts). Because the cluster is separated in six features, the group is the most certain one in the file; we did not add a second condition.
+
+\paragraph{Group 4: low activity.}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_t5_lowact.png}
+\caption{Low-activity cluster (265 accounts). (a) Mean \feat{activity_level}: cluster maximum 0.27, normal minimum 0.41, cut 0.34. (b) Against mean \feat{skill_rating}. (c) The six features that differ most from normal accounts.}
+\label{fig:t5-lowact}
+\end{figure}
+
+\textbf{What we saw.} Activity is almost absent in this group (median mean \feat{activity_level} 0.20 against 1.00), and the group differs in two further features in a way that makes it look like a particular kind of player: a high \feat{skill_rating} (median 2,355 against 1,749; KS 0.82) and a high \feat{purchase_amount_mean} (398 against 251; KS 0.66). In panel (b) the cluster sits in the top left, with high skill and almost no activity, an unusual profile (strong, spending, but silent). The normal accounts and the cluster overlap in the second feature alone (skill rating 2,355 is inside the normal range), so only the activity histogram gives a clean cut.
+
+\textbf{What we decided.} Flag mean \feat{activity_level} below 0.34 (265 accounts). The second feature is not used as a rule because it overlaps with the normal range, but it makes us confident that the cluster is not an artefact of a single column. One further account has \feat{activity_level} missing in all four periods and cannot be tested; we come back to it in Section~\ref{sec:t5-eval}.
+
+\paragraph{Group 5: low communication.}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_t5_lowcomm.png}
+\caption{Low-communication cluster (263 accounts). (a) Mean \feat{communication_frequency}: cluster maximum 0.09, normal minimum 0.24, cut 0.17. (b) Against mean \feat{friend_adds}. (c) The six features that differ most from normal accounts.}
+\label{fig:t5-lowcomm}
+\end{figure}
+
+\textbf{What we saw.} These accounts talk very little (median 0.05 against 0.75, with an unusually small spread over time, KS 0.81 for the standard deviation) but they add many friends (mean \feat{friend_adds} 20.1 against 9.4, KS 0.86) and change guilds twice as often (2.5 against 1.25, KS 0.75). Silent accounts that collect friends and move between guilds are the behaviour of a spam or recruiting account. The cluster is again isolated in a clean gap (0.09 to 0.24).
+
+\textbf{What we decided.} Flag mean \feat{communication_frequency} below 0.17 (263 accounts), the middle of the gap.
+
+\paragraph{Group 6: low stability, including the accounts with missing values.}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_t5_lowstab.png}
+\caption{Low-stability cluster (246 accounts). (a) \feat{behavior_stability}: cluster maximum 0.40, normal minimum 0.70, cut 0.55. (b) Against mean \feat{purchase_frequency}. (c) The six features that differ most from normal accounts.}
+\label{fig:t5-lowstab}
+\end{figure}
+
+\textbf{What we saw.} Here the gap is the widest (0.40 to 0.70) and the group is easy to read: \feat{behavior_stability} has a median of 0.30 (normal 0.82). The companion features are a high \feat{purchase_frequency} (mean 4.5 against 2.5, KS 0.71), a low \feat{login_count} (34 against 60, KS 0.54) and an older account (1,166 against 838 days, KS 0.47). Every observed \feat{purchase_frequency} value of these accounts lies in the narrow range 3 to 6 and every observed \feat{account_age_days} value in 800 to 1,500, which defines the companion box used below. The difficulty is that \feat{behavior_stability} is missing for 4.86\% of all accounts (1,257), so hidden members cannot be tested by the cut. About $246\times0.0486/(1-0.0486)\approx 12.6$ members are expected to be hidden among the missing values.
+
+\textbf{What we decided.} Flag \feat{behavior_stability} below 0.55 (246 accounts) and recover the hidden members statistically, as described next.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t5_lsnan.png}
+\caption{Recovery of hidden low-stability accounts. (a) Posterior of the 129 candidates (missing \feat{behavior_stability}, inside the companion box, not yet flagged); the dashed line at 0.10 is the $F_3$ break-even, 53 are above it. (b) The two features of the likelihood, mean \feat{login_count} and the standard deviation of \feat{purchase_frequency}: visible \feat{lowstab} accounts (pink), normal accounts in the same box (grey), and the candidates (rings; diamonds are flagged). (c) Number of flagged accounts as a function of the assumed number of hidden members, for three posterior thresholds.}
+\label{fig:t5-lsnan}
+\end{figure}
+
+\textbf{What we saw (hidden members).} The 129 candidates are those with a missing \feat{behavior_stability} that lie outside the union and inside the companion box. Panel (b) shows why a posterior can work at all: visible \feat{lowstab} accounts (pink) have a lower mean \feat{login_count} than normal accounts of the same box, while the candidates (rings) spread between the two clouds, those at low \feat{login_count} being flagged. Panel (c) is a sensitivity check of the one number we cannot measure, the prior. With the threshold fixed at 0.10 and a prior of 10, 13, 14, 17 and 20 hidden members, the posterior flags 36, 47, 53, 61 and 66 accounts. The flagged set changes slowly, and the threshold 0.05 (69 to 70 accounts for every prior of 13 or more) is almost saturated, so the result is stable in the region we believe in.
+
+\textbf{What we decided (hidden members).} Flag the candidates whose posterior exceeds 0.10 (53 accounts, 52 of them new) with a prior of 14. The threshold is the break-even of $F_3$, and the prior is the expected number of missing members rounded up; changing either by the amounts tested in Section~\ref{sec:t5-failed} moved the leaderboard by less than its resolution.
+
+\paragraph{Group 7: the 3-metric box (accuracy, kda, performance stability).} A seventh stationary type hides inside the normal range of every individual feature. It appears only when three statistics are examined together: at all four periods, \feat{performance_stability} lies in $[0.85,0.95]$, \feat{kda_std} in $[0.70,1.00]$ and \feat{accuracy_std} in $[9,12]$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t5_acckda.png}
+\caption{The 3-metric box (244 accounts). (a to c) One-dimensional views of the three metrics: the box accounts (pink) fall into a part of the normal range; the label gives the share of normal accounts with all four periods inside the shaded interval. (d to f) The three two-dimensional projections; the dashed rectangle is the box, grey dots are a sample of normal accounts. Only the three-dimensional intersection is empty of normal accounts.}
+\label{fig:t5-acckda}
+\end{figure}
+
+\textbf{What we saw.} In the one-dimensional views (a to c) the box accounts sit at the upper end of a range that normal accounts also cover, and each interval contains between 2.6\% and 3.9\% of the normal accounts. If the three metrics were independent among normal accounts, about 0.9 normal account would be expected in all three intervals at once; we observe none, while the box holds 244 accounts. The two-dimensional views (d to f) show a tight clump in a corner that a single histogram cannot isolate. No other detector flags any of the 244 accounts.
+
+\textbf{What we decided.} Flag accounts with all four periods of the three metrics inside the intervals (a missing cell counts as compatible). A single metric would flag about 4\% of normal accounts, but the intersection flags none, which is why a joint rule is needed.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{fig_t5_box_recovery.png}
-\caption{Left: the 3-metric box (dashed) contains 244 accounts outside the earlier detectors; a sample of other accounts spreads over the whole plane (the third metric, \texttt{performance\_stability}, is not drawn). Right: accounts with the \texttt{lowstab} pattern have a different mean \texttt{login\_count} than normal accounts inside the same companion box, which is the signal used to recover hidden members.}
+\caption{Left: the 3-metric box (dashed) contains 244 accounts outside the earlier detectors; a sample of other accounts spreads over the whole plane (the third metric, \feat{performance_stability}, is not drawn). Right: accounts with the \feat{lowstab} pattern have a different mean \feat{login_count} than normal accounts inside the same companion box, which is the signal used to recover hidden members.}
 \label{fig:t5-box}
 \end{figure}
 
-In the left panel of Figure~\ref{fig:t5-box}, the 244 accounts of the box form a tight clump in a corner of the plane that no one-dimensional histogram can show. In the right panel, accounts with a visible low \feat{behavior_stability} also share a narrow range of \feat{purchase_frequency} (3 to 6) and of \feat{account_age_days} (800 to 1,500); inside that companion box their mean \feat{login_count} is lower than that of normal accounts. This matters for the 4.86\% of accounts whose \feat{behavior_stability} is missing: the cluster cut cannot test them, so some anomalies must hide there (about 14 expected, since $246\times0.0486/(1-0.0486)\approx 12.6$).
+Figure~\ref{fig:t5-box} repeats, in one picture, the two ideas used above: a joint box that no single feature shows (left) and a companion box in which hidden \feat{lowstab} members have a measurably lower \feat{login_count} (right; the companion intervals hold all 246 visible members when a missing cell counts as compatible).
+
+\paragraph{How the groups fit together.} Figure~\ref{fig:t5-overlap} counts how many accounts each detector flags and how the detectors overlap on the final 2,104-row file.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_t5_overlap.png}
+\caption{Overlap of the detectors on the final file, UpSet style. Bars: accounts in exactly the marked combination; dots: detectors in the combination; the number after each name is that detector's total. Only two combinations overlap: 479 accounts are in both the location and the shock group, and one account is in both the box and the posterior recovery.}
+\label{fig:t5-overlap}
+\end{figure}
+
+The picture is more regular than a set of independent detectors would give. The four stationary clusters, the bot cluster and the shock rule are pairwise disjoint (the union of 1,808 accounts is exactly 827 + 207 + 265 + 263 + 246), the box overlaps none of them, and the only overlaps are inside the rule (location jump with shock) and one account shared by the box and the posterior. In real traffic, one account can be a bot and a seller at the same time; here each flagged account carries exactly one anomaly type, as if one type had been assigned to each account. Figure~\ref{fig:t5-composition} shows how the final size is built up.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t5_composition.png}
+\caption{Size of each group on the final file, added in the order in which we found them (cumulative). Each bar is the number of accounts a group adds to the earlier ones; the black bar is the final file, 2,104 accounts (8.13\% of the test file).}
+\label{fig:t5-composition}
+\end{figure}
+
+\paragraph{Is anything left?} We checked the claim that no further isolated cluster exists with the same method on every feature. For each of the 29 metrics (27 behavioural plus latitude and longitude) we took the four-period mean and standard deviation, and added the two static features: 60 features. In each, we found the widest gap in the sorted values that leaves between 20 and 777 accounts (3\% of the file) on its smaller side, measured in robust standard deviations of the feature, and asked which known group the accounts behind the gap belong to.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t5_gapscan.png}
+\caption{Full gap scan of 60 features, the 24 with the widest gaps. Filled magenta dots: at least 90\% of the accounts behind the gap belong to a group we already flag (label gives the group). Hollow grey dots: no known group, and in every case an integer-valued count feature. Gap width is relative to the spread of the normal bulk, so features with a narrow bulk rank high; what matters is the colour.}
+\label{fig:t5-gapscan}
+\end{figure}
+
+For 35 of the 60 features the widest gap isolates members of a known group (Figure~\ref{fig:t5-gapscan}): the 4 cluster features, the bot cluster again in several other features, and the shock group in many standard deviations of the metrics that shock. The other 25 have gaps of at most 2.3 robust standard deviations, and only four of them exceed 0.25 (the mean and the standard deviation of \feat{refund_count} and of \feat{device_count}, which are small integers). The standard deviation of four small integer counts takes few distinct values, which leaves holes in its tail, so these are lattice effects of the feature and not clusters. We therefore found no further isolated group in any single feature.
 
 \paragraph{Remaining structure.} A local analysis of the new file (not part of the submission notebook) found that the median $|r|$ between feature pairs is 0.0049 with a maximum of 0.24 over all accounts, but 0.0044 and 0.026 for the 23,785 accounts that are not flagged. The correlation in the full file therefore came from the anomalies, and the normal accounts are close to independent, which is why we expect nothing structured to be left for a further detector. The same analysis counts 18 anomalies hidden behind missing cells, which is the target of the recovery step below.
 
@@ -57,10 +195,16 @@ In the left panel of Figure~\ref{fig:t5-box}, the 244 accounts of the box form a
 There is no train set, so preprocessing consists of per-account summaries that make each anomaly type visible, computed from the test file only. Table~\ref{tab:t5-evidence} links each figure to the decision it motivated.
 
 \begin{evidencetable}{EDA evidence and the pipeline decision it motivated (task 5).}{tab:t5-evidence}
-Figure~\ref{fig:t5-shock}. Normal accounts stay near home and change little; a separate tail jumps $>5^\circ$ or moves $\ge2$ metrics with $z_2>6$ & Rule detector on periods 3/4 versus the baseline of periods 1/2, cut inside the empty band. \\
-Figure~\ref{fig:t5-gaps}. Four features have empty gaps that isolate small clusters & Exact gap cuts per cluster (\feat{bot}, \feat{lowact}, \feat{lowcomm}, \feat{lowstab}) instead of one black-box anomaly score. \\
-Figure~\ref{fig:t5-box} (left). A fifth type hides in a joint box of three metrics at all four periods & Box detector on \feat{performance_stability}, \feat{kda_std} and \feat{accuracy_std}. \\
-Figure~\ref{fig:t5-box} (right). Hidden members have a distinct \feat{login_count} inside their companion box & Bayesian posterior for accounts with missing \feat{behavior_stability}, flagged above $p>0.10$ (the break-even of $F_3$). \\
+Figure~\ref{fig:t5-takeover}. Jumpers land anywhere on the map; a band of 3.0 to 6.8 degrees is empty; 71 accounts report an impossible latitude & Location rule: period-3/4 login $>5^\circ$ from home, or $|\text{lat}|>90$ (490 accounts). \\
+Figure~\ref{fig:t5-selling}. Shocked accounts move at least two metrics, in two distinct patterns (location and spending versus skill and friends) & Shock rule: at least two metrics with robust $z>6$ (816 accounts; 827 together with the location rule). \\
+Figure~\ref{fig:t5-flags}. Security flags are enriched in the jump group, weakly in the shock-only group, not elsewhere & Flags are a check, not a rule: most flagged rows do not carry them. \\
+Figures~\ref{fig:t5-gaps} and~\ref{fig:t5-bot}. Bot cluster separated in six features with a gap of 0.47 to 1.67 & Cut \feat{login_time_variance} $<1.0$ (207). \\
+Figure~\ref{fig:t5-lowact}. Low activity, high skill and spending; gap 0.27 to 0.41 & Cut \feat{activity_level} $<0.34$ (265). \\
+Figure~\ref{fig:t5-lowcomm}. Low communication, many new friends; gap 0.09 to 0.24 & Cut \feat{communication_frequency} $<0.17$ (263). \\
+Figure~\ref{fig:t5-lowstab}. Low stability; gap 0.40 to 0.70; 4.86\% of values missing & Cut \feat{behavior_stability} $<0.55$ (246) and a recovery step for the missing values. \\
+Figure~\ref{fig:t5-lsnan} (and the right panel of Figure~\ref{fig:t5-box}). Hidden members have a lower \feat{login_count} inside their companion box; the number flagged changes slowly with the prior & Bayesian posterior for accounts with missing \feat{behavior_stability}, flagged above $p>0.10$ (the break-even of $F_3$), prior 14. \\
+Figure~\ref{fig:t5-acckda} (and the left panel of Figure~\ref{fig:t5-box}). A seventh type hides in a joint box of three metrics at all four periods; no normal account is inside & Box detector on \feat{performance_stability}, \feat{kda_std} and \feat{accuracy_std} (244 accounts). \\
+Figures~\ref{fig:t5-overlap} and~\ref{fig:t5-gapscan}. Detectors do not overlap except inside the rule; no other isolated cluster in 60 features & The union is the sum of the groups (1,808); no further detector is added. \\
 \end{evidencetable}
 
 \paragraph{Features.} Four summaries are used. (i) The \emph{home position} is the mean of the period-1 and period-2 login coordinates. (ii) The \emph{period change} of a metric is the largest absolute difference between its period-3/4 values and the mean of its period-1/2 values; its robust $z$-score uses the median and $1.4826\times$MAD of the change over all accounts. (iii) The \emph{four-period mean} of a metric detects stationary clusters. (iv) The four-period mean of \feat{login_count} and the period-wise standard deviation of \feat{purchase_frequency} feed the recovery step.

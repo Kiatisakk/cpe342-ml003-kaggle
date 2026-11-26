@@ -59,9 +59,8 @@ Columns `experiment,metric,delta,status,source,note`. `status` in `{kept, droppe
 Compile output files are git-ignored.
 
 ## Open questions
-1. Operating-point figure (`task1/figures/fig_t1_f2_operating_point.png`) comes from the local pipeline's clean ECDF blend: threshold 0.3769, OOF optimum 62.4%, 59.33% flagged on test.
-   The submission notebook reports threshold 0.37264, 62.80% OOF flagged, 59.81% test flagged. The caption states both; regenerate the figure from the notebook scores if exact agreement is wanted.
-2. The T1 masking ablation (OOF AUC 0.89403 to 0.89446, seed 42) is from the local pipeline, not the submission notebook; kept because it is the only isolated ablation.
-3. Task 1 text says earlier submissions used a test-rank top-60% cut (CLAUDE.md log); confirm that wording with the team before submission.
+1. Resolved 26 Nov: the T1 operating-point figure is redrawn by `scripts/gen_figs_t1.py` (curve from a re-run of the same pipeline, marker = the notebook threshold 0.37264). The team confirmed that the small threshold difference comes from running on different CPUs.
+2. The T1 masking ablation (OOF AUC 0.89403 to 0.89446, seed 42) is from a re-run on other hardware; the text says so.
+3. Resolved 26 Nov: the team confirmed the T1 test-rank-cut wording and the T2 v10c/v10d leak attribution.
 4. The teammate's PR branch lives on a fork; it was fetched through `refs/pull/1/head` (local branch `task1-report`), and `report` is based on it.
 5. Pre-existing T1 numbers are the teammate's (notebook-derived); the 56 Model A features and the other counts were not re-verified in wave 1.
