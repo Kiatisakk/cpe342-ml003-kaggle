@@ -1,6 +1,10 @@
 experiment,metric,delta,status,source,note
 Two-stage hurdle with MAE-optimal rule (HGB first version),OOF NMAE,,kept,local pipeline REPORT (milestones),0.7843 starting point; point prediction q = 1 - 1/(2p)
+Hurdle-ZILN v1 (XGB log-normal head) vs HGB two-stage,OOF NMAE,0.005,dropped,CLAUDE.md notebook table (task3-hurdle-ziln v1),0.7843 to 0.7893; superseded by CatBoost quantile model
+"Hurdle-ZILN v2 (exact fill, segment imputer)",OOF NMAE,0.0023,dropped,task3_hurdle_ziln_v3.py header,0.7893 to 0.7916; superseded by CatBoost quantile model
+"Hurdle-ZILN v3 (LightGBM, multi-quantile)",OOF NMAE,0.0001,dropped,task3_hurdle_ziln_v4.py header,0.7916 to 0.7917; plateau; superseded
 XGBoost multi-quantile hurdle (v4) vs HGB two-stage,OOF NMAE,0.00761,kept,local pipeline REPORT (E02),0.7843 to 0.79191 (nested LAD blend); superseded
+NN-ZILN K=3 blended into the v4 XGBoost stack,OOF NMAE,0.0005,dropped,"CLAUDE.md section 3 and sub_v6_README (sub_v5, sub_v6)","0.7920 to 0.7925 with in-sample weights; submitted in sub_v5/v6, superseded by CatBoost quantile model"
 Offset log(y/prev) instead of log1p(y) target (XGBoost),OOF NMAE,0.002,kept,local pipeline REPORT (E06),0.79191 to 0.79391
 CatBoost depth-4 multi-quantile instead of XGBoost (one seed),OOF NMAE,0.001,kept,local pipeline REPORT (E30),0.79405 to 0.79505
 Seed bag 3x3 vs one seed,OOF NMAE,0.00024,kept,local pipeline REPORT (bag_q3p3),0.79505 to 0.79529; 5 of 5 folds up
@@ -17,6 +21,6 @@ Optuna search on CatBoost,paired CV NMAE (folds 2-4),-0.00013,dropped,local pipe
 Fill is_premium_member from vip_status >= 3,OOF NMAE (one seed),-0.00007,dropped,work/insight INSIGHTS.md (c08),0.79499 vs 0.79506; 2 of 5 folds up
 Pooled residual-quantile shape instead of 11 fitted quantiles,OOF NMAE (one seed),-0.00007,dropped,work/insight INSIGHTS.md (c09),0.79499 vs 0.79506
 CatBoost native categoricals,paired CV NMAE,0.00007,dropped,CLAUDE.md (10 Nov techniques),+-0.00011; 3 of 5 folds: noise
-Neural mixture of log-normals blended in,OOF NMAE,0,dropped,CLAUDE.md section 4 (NN blend adds 0),NN_K3 alone 0.7901
+NN-ZILN K=3 blended into the final CatBoost model,OOF NMAE,0,dropped,CLAUDE.md section 4 (NN blend adds 0),"NN_K3 alone 0.7901; plain blend with the final model 0.79529 at weight 0.1, 0.79392 at 0.5 (own check on saved OOF)"
 50/50 robust-model blend,LB public,0,dropped,CLAUDE.md LB log (sub_v18c and v18d),Public score identical to the single model
 Jensen correction + hard zero cut-off (teammate variant),LB public,-0.00011,dropped,CLAUDE.md (13 Nov teammate submissions),v27 vs v25a on the re-released data

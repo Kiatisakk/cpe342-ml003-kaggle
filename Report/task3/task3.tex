@@ -146,6 +146,15 @@ Point prediction & $q=\mathrm{clip}\bigl(1-1/(2p),0.02,0.50\bigr)$, linear inter
 
 \paragraph{Why these choices.} \emph{Depth 4.} The log-residual is a sum of a few multiplicative steps (premium, VIP tier, number of games, recency, month), which shallow symmetric trees represent well; deeper trees and XGBoost or LightGBM scored lower in our comparisons. \emph{Multi-quantile.} One model produces all 11 quantiles together with shared trees; the predicted quantiles are sorted afterwards to remove any crossing. \emph{Seeds.} The seed average costs compute only: ten seeds of each stage added 0.00006 over three of each.
 
+\paragraph{Earlier model: the ZILN hurdle.} Before the CatBoost quantile model, our Task~3 submissions \texttt{sub\_v5} and \texttt{sub\_v6} used a blend built on a \emph{zero-inflated log-normal} (ZILN) model (Section~\ref{sec:t3-eval}). ZILN writes the target as a mass at zero plus a log-normal payer amount and fits both parts with one likelihood. With $z_i=\log(1+y_i)$, $p_i=P(y_i>0\mid x_i)$ and a mixture of $K$ log-normals for the payer amount, the loss we minimised on the training rows is
+\[
+\mathcal L=\underbrace{-\tfrac1n\sum_i\bigl[\mathbf{1}(y_i{=}0)\log(1-p_i)+\mathbf{1}(y_i{>}0)\log p_i\bigr]}_{\text{binary cross-entropy on paying}}
+\;\underbrace{-\;\tfrac1n\sum_{i:\,y_i>0}\log\sum_{k=1}^{K}\pi_{ik}\,\mathcal N\!\bigl(z_i;\mu_{ik},\sigma_{ik}^2\bigr)}_{\text{log-normal NLL of the payers}} ,
+\]
+which is the loss of Wang et al.\ (2019) for $K=1$. It fits this target for the two reasons of Section~\ref{sec:t3-eda}: 48\% of the rows are exact zeros, and the payer amount is a product of several factors, so $\log y$ is the natural scale. We ran it in two forms, both on the same exact fill, segment imputer and folds as the final model. In the \emph{gradient-boosting form} (notebooks \texttt{task3-hurdle-ziln}, versions 1 to 3, and \texttt{task3-hurdle-ziln-v4}) XGBoost fitted $p$ with a classifier, the mean $\mu(x)$ of $\log(1+y)$ for payers with a squared-error regressor, and the log-variance with a second regressor, with a log-normal as the payer law. In the \emph{neural form} (\texttt{task3-nn-ziln}) one network predicts $p$, the weights $\pi_k$, the means $\mu_k$ and the scales $\sigma_k$ jointly. It embeds each quantile-normalised numeric feature with periodic features, passes them through three residual blocks of width 512, and was trained with AdamW, one-cycle learning rate, at most 80 epochs and early stopping on 10\% of each fold, two seeds per fold. $K=1$ is plain ZILN and $K=3$ is a mixture of three log-normals.
+
+The point prediction is the hurdle median derived at the start of this section. Both forms return a full payer distribution, so we set $\hat y=0$ when $p\le\tfrac12$ and otherwise take its quantile at $q=1-1/(2p)$: for the single log-normal that is $\exp(\mu+\sigma\,\Phi^{-1}(q))-1$, for the mixture we invert the mixture cdf by bisection. Two numbers, a shift of $p$ and a multiplicative scale, were tuned on the out-of-fold predictions (for the $K=3$ network the shift is $+0.05$ and the scale $0.975$). The ZILN stack was then blended with the XGBoost multi-quantile models (Section~\ref{sec:t3-eval}). The ZILN branch was later replaced by direct quantile models, and the analysis of the data generator explains why a parametric shape for every player is a poor fit (Sections~\ref{sec:t3-eval} and~\ref{sec:t3-mistakes}). The ZILN runs used the first data release; Task~3 was not changed by the re-release of 12 November, so these scores are comparable with the final ones.
+
 \subsubsection{Evaluation and Results}
 \label{sec:t3-eval}
 
@@ -176,6 +185,17 @@ CatBoost + LightGBM, $3\times3$ seeds & 0.79529 & +0.00024 \\
 \end{figure}
 
 The final model scores 0.79535 (fold mean 0.79540, standard deviation 0.0076 across folds; the saved 10$\times$10 ensemble from the research pipeline gives 0.79537). Stage 1 alone reaches an out-of-fold AUC of 0.78439. The model predicts zero for 50.4\% of test players and has a mean prediction of 10{,}430 THB, close to the training mean of 10{,}497 THB. In the public leaderboard the 10-seed version scored 0.00001 above the 3-seed one (\texttt{sub\_v24a} against \texttt{sub\_v23a}), as the out-of-fold gain predicted.
+
+\paragraph{How the model evolved, including the ZILN stages.} Figure~\ref{fig:t3-evolution} places the earlier ZILN stages on the same scale (data in \texttt{data/t3\_model\_evolution.csv}). The first hurdle ZILN model (XGBoost with a log-normal payer head) scored 0.7893, version 2 with the exact fill and the segment imputer 0.7916, version 3 0.7917, and the version-4 XGBoost multi-quantile blend 0.7920 (weights tuned on the same out-of-fold rows; the nested value is 0.79191 in Table~\ref{tab:t3-results}). The neural ZILN reached 0.7867 with one log-normal and 0.7901 with three. Blending version 4 with the $K=3$ network (weights 0.38, 0.24, 0.06 for the three XGBoost quantile models and 0.32 for the network) gave 0.7925 with in-sample weights; that blend was the Task~3 column of \texttt{sub\_v5} and \texttt{sub\_v6}. The CatBoost offset model then reached 0.79505 alone and 0.79535 as the final bag.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,height=0.38\textheight,keepaspectratio]{fig_t3_evolution.png}
+\caption{OOF NMAE of every Task~3 modelling stage. Blue marks the ZILN stages, green the CatBoost quantile stages. Filled markers were submitted as Task~3, diamonds were components of a submitted blend, hollow markers were research runs only. The ZILN stack reached 0.7925; the quantile model that replaced it is 0.0029 higher.}
+\label{fig:t3-evolution}
+\end{figure}
+
+What we see: each ZILN stage gained from better inputs (exact fill, segment) and from a better payer law (mixture instead of one log-normal), until about 0.792; the move from a parametric payer law to direct quantiles, an offset target and CatBoost added about 0.003, ten times the later seed averaging. What we decided: stop developing the ZILN branch and keep the hurdle rule, which both families share.
 
 \paragraph{Baselines.} Table~\ref{tab:t3-baselines} gives simple predictors on the same training rows, to show what the score means. A constant mean scores below the all-zero baseline because MAE punishes the many small payers it overpredicts and the whales it underpredicts.
 
@@ -237,6 +257,17 @@ Whales hold 79.4\% of the absolute error (Figure~\ref{fig:t3-error}a). In relati
 
 \paragraph{The data have a floor.} Without the 266 spike rows the same predictions would score 0.8135, and with every zero known in advance 0.8527. We found, in the training data, that the payer amount equals last month's spending times a base ratio for the segment (about 1.10, 1.63, 1.82 and 3.04) times a few step factors (premium about $\times1.52$, each additional VIP tier about $\times1.1$, each extra game $\times1.07$, the months 0 and 11 $\times1.26$, a purchase within 15 days $\times1.16$) times a bounded noise with a log-standard-deviation of 0.15 in every segment. The learning curve of that noise is flat (0.158 at 5{,}000 rows, 0.152 at 38{,}000). We read this as a floor of about 0.796 for this metric, and our score of 0.7954 sits at it.
 
+\paragraph{Why the log-normal head lost to quantiles.} Figure~\ref{fig:t3-ziln} compares the neural ZILN with the final model on the same out-of-fold rows (the saved network predictions line up with the training rows exactly).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t3_ziln_diag.png}
+\caption{(a) Error relative to spending in each segment for the neural ZILN ($K=1$, $K=3$) and the final CatBoost bag. (b) OOF NMAE of an arithmetic blend of the final model with the $K=3$ network; no weight above zero improves the score.}
+\label{fig:t3-ziln}
+\end{figure}
+
+\emph{What we see.} The final model has the lower error ratio in every segment, most clearly for Grinders (0.726 against 0.755 for $K=3$) and whales (0.234 against 0.242), and going from $K=1$ to $K=3$ already closes part of the gap (0.7867 to 0.7901). The XGBoost log-normal head of version 4 scores 0.7900 against 0.7917 for the multi-quantile model on the same features and probabilities, so a single parametric payer law costs about 0.0017 there. A log-normal has a heavy right tail and a smooth density, whereas the payer residual is a bounded noise with a log-standard-deviation of 0.15 plus a few spikes; the quantile we need is in the lower half of the distribution (Section~\ref{sec:t3-design}), where the shape of the tail should not matter, but a likelihood fit can still be pulled by the spikes (we did not test this separately). Adding the network does not help the final model: an arithmetic blend scores 0.79529 at weight 0.1 and 0.79392 at weight 0.5, against 0.79537 alone. \emph{What we decided.} Drop the ZILN branch from the final model.
+
 \paragraph{Calibration and totals.} The model is calibrated where it matters. Predicted payer probabilities match observed rates in every bin (Figure~\ref{fig:t3-qrule}b). It predicts zero for 73\% of the true non-payers and for 29\% of the true payers, and the sum of its out-of-fold predictions is 100.2\% of the true total spending.
 
 \paragraph{Ranking whales.} Ranking players by predicted spending puts 91.9\% of the true spending into the top 14\% (the best possible ranking gives 93.4\%), and 52.6\% into the top 5\% (best possible 58.4\%). Of the 5\% biggest true spenders, 84\% are also in the predicted top 5\%.
@@ -264,11 +295,13 @@ Optuna search on CatBoost & $-0.00013$ & Gain on folds 0--1 vanished on folds 2-
 Fill of \feat{is_premium_member} from the identity \feat{vip_status}$\ge3$ & $-0.00007$ & Exact identity, but CatBoost already reads it from VIP tier. \\
 Pooled residual-quantile shape instead of 11 fitted quantiles & $-0.00007$ & The noise has one shape for every payer. \\
 Native categoricals in CatBoost & $+0.00007\pm0.00011$ & 3 of 5 folds: noise. \\
-Neural mixture of log-normals (NN, 0.7901) in a blend & 0 & No gain on top of the boosting stack. \\
+Neural ZILN, mixture of 3 log-normals (alone 0.7901), blended into the final model & 0 (our log); $-0.0001$ at weight 0.1 in a plain blend (Figure~\ref{fig:t3-ziln}) & No gain on top of the CatBoost quantile model; it had helped the XGBoost stack (0.7920 to 0.7925). \\
 $50/50$ robust blend with a second quantile model & 0 (public) & Public score identical to the single model. \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\paragraph{The ZILN detour.} We spent the first stage of Task~3 on ZILN because it is the textbook loss for a zero-inflated, positive and multiplicative target, and it did give a strong baseline (0.7893 to 0.7925 across five stages and a neural variant). Two things we would do differently. First, the metric needs one quantile of the payer distribution (from the start we used $q=1-1/(2p)$ on top of ZILN), so a loss that fits the whole shape adds a parametric assumption that the metric does not need; the pinball loss on 11 quantiles fits what is read off directly. Second, we tuned the ZILN stages on the same out-of-fold rows we scored them on (the 0.7920 and 0.7925 weights are in-sample; the nested value of the XGBoost blend is 0.79191), so part of their lead over HGB was optimistic. The CatBoost model has no tuned weights, so its 0.79535 needs no such correction. When the quantile model arrived, the NN no longer added anything, and the ZILN code was left in the repository as notebooks \texttt{task3-hurdle-ziln}, \texttt{task3-hurdle-ziln-v4} and \texttt{task3-nn-ziln}.
 
 \paragraph{Rule compliance.} Task~3 involved no leak and no test statistic. The segment imputer, the exact fill, the folds and every threshold are computed from training rows, and the clip value of 300{,}000 is the maximum of the training target. A teammate's variant on the re-released data that mixed a Jensen correction with a hard zero cut-off scored 0.00011 below the model it modified on the public leaderboard, and we did not adopt it.
 
