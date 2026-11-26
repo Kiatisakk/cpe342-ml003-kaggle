@@ -549,3 +549,38 @@ fig.savefig(fp, dpi=200)          # photographic content: 200 dpi and a 256-colo
 plt.close(fig)
 Image.open(fp).convert("RGB").quantize(256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(fp, optimize=True)
 print("wrote fig_t4_scene_fold_samples.png", os.path.getsize(fp) // 1024, "KB")
+
+
+# ---- 16. constant-base probes of the first data release (numbers from the pipeline repo's LB log) -------------
+# base = T1 all 1, T2 = T3 = T5 = 0, T4 = datacard names (measured 0.27401 = T4 scores zero); bar = probe LB - base.
+BASE = 0.27401
+probes = [  # label, LB, chance-model prediction of the LB (or None)
+    ("T4 = datacard names (reference)", 0.27401, None),
+    ("7 label formats round-robin", 0.27935, None),
+    ("only fiveN rows = 1, rest 'LOL'", 0.28336, 0.2833),
+    ("integer text only in some groups", 0.28420, None),
+    ("ints, mapping M1 (one name row)", 0.30552, None),
+    ("ints, mapping M4", 0.31254, None),
+    ("ints, mapping M3", 0.31336, None),
+    ("ints, mapping M2b", 0.31337, None),
+    ("ints, rows sorted by id", 0.31327, 0.3129),
+    ("ints, contiguous row blocks", 0.31307, 0.3127),
+]
+fig, a = plt.subplots(figsize=(8.4, 3.7))
+yy = np.arange(len(probes))[::-1]
+a.axvspan(.2 * .19, .2 * .20, color=T4C, alpha=.16, lw=0)
+a.text(.2 * .195, len(probes) - .35, "chance:\nmacro F1\n0.19-0.20", ha="center", va="top", fontsize=7.4, color=T4C)
+for yi, (lab, lb, pred) in zip(yy, probes):
+    a.barh(yi, lb - BASE, color=T4C if lb - BASE > .02 else DROPPED, height=.62)
+    a.text(max(lb - BASE, 0) + .0008, yi, f"{lb - BASE:+.4f}", va="center", fontsize=7.8, color=INK)
+    if pred is not None:
+        a.plot(pred - BASE, yi, "D", color=INK, ms=4.5, zorder=5)
+a.set_yticks(yy); a.set_yticklabels([p[0] for p in probes], fontsize=8)
+a.set_xlim(-.002, .05)
+a.set_xlabel("public LB minus constant base (0.27401)  =  0.2 x (Task 4 macro F1)")
+a.set_title("Constant-base probes, first release: only integer text scores, and only at chance", fontsize=9.5)
+a.plot([], [], "D", color=INK, ms=4.5, label="chance-model prediction")
+a.legend(loc="center right", bbox_to_anchor=(1.0, 0.7), fontsize=7.8)
+a.grid(axis="y", visible=False)
+fig.tight_layout()
+save(fig, "fig_t4_probes.png")

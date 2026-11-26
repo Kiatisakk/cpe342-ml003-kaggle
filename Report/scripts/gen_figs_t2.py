@@ -283,9 +283,30 @@ def fig_results_insights():
     save(fig, "fig_t2_errors.png")
 
 
+def fig_learning_curve():
+    """Learning curve of NB / EM-NB (first data release, hand-entered from E11 log; see data/t2_learning_curve.csv)."""
+    lc = pd.read_csv(os.path.join(os.path.dirname(HERE), "data", "t2_learning_curve.csv"))
+    fig, ax = plt.subplots(figsize=(6.4, 3.2))
+    for m, col, mk in [("NB", ps.INK_MUTED, "o"), ("EM-NB", ACC, "s")]:
+        d = lc[lc["model"] == m]
+        ax.errorbar(d["n_train"], d["macro_f1_mean"], yerr=d["sd_3_seeds"], color=col, marker=mk, ms=5, lw=1.6, capsize=2, label=m)
+    ax.axhline(0.7557 + 0.002, color=ps.AXIS, ls="--", lw=1)
+    ax.text(9000, 0.7557 + 0.0025, "full data + 0.002 (headroom)", fontsize=8, color=ps.INK_MUTED)
+    ax.set_ylim(0.745, 0.7595)
+    ax.set_xscale("log")
+    ax.set_xticks([8320, 20800, 41600, 83200])
+    ax.set_xticklabels(["8.3k\n(10%)", "20.8k\n(25%)", "41.6k\n(50%)", "83.2k\n(100%)"])
+    ax.minorticks_off()
+    ax.set_xlabel("training rows per fold (share of the fold's training part)")
+    ax.set_ylabel("5-fold OOF macro F1 (3 seeds)")
+    ax.legend(loc="lower right", fontsize=8.5)
+    save(fig, "fig_t2_learning_curve.png")
+
+
 if __name__ == "__main__":
     fig_balance_missing()
     fig_signal()
     fig_independence()
     fig_latent()
     fig_results_insights()
+    fig_learning_curve()

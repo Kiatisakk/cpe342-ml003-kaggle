@@ -11,5 +11,16 @@ Cut p>=0.175 (61%) instead of 60%,LB public,-0.00002,dropped,CLAUDE.md LB log (s
 Non-negative logit stack instead of rank blend,nested CV F2,-0.00041,dropped,CLAUDE.md (report techniques 10 Nov),Stack +0.00039 vs argmax baseline but 0.00041 below the rank blend
 13 seeds instead of 3 for final_v2,nested CV binary F2,0.00008,dropped,CLAUDE.md (12 Nov),0.83927 vs 0.83919: noise
 Cross-fitted linear skill logits as features,CV F2 (2 seeds; AUC +0.0003),0.0001,dropped,CLAUDE.md (insight hunt 16 Nov),AUC +0.0003 and F2 +-0.0001: noise
-TabPFN added to the blend,estimate LB,0.00016,dropped,CLAUDE.md (15 Nov review),Estimate only; needs a UI run with a token; not run
+TabPFN added to the blend,estimate LB,0.00016,dropped,CLAUDE.md (15 Nov review),TabPFN did run standalone (F2m 0.7799; with HGB 0.7825); only adding it to the final blend was not run. Estimate +0.00016 LB; needs a UI run with a token
+Label-free LightGBM imputers for missing reports/friends/crosshair/age/level,OOF ROC-AUC (3 seeds),-0.00009,dropped,t1/research/REPORT.md exp12,0.89306 vs 0.89315; imputed values only proxy class from columns the GBM already sees
+kNN target-rate features (k 25/100/400),nested F2m (2 seeds),-0.0012,dropped,t1/research/REPORT.md exp14,0.7799 / 0.7795 vs 0.78108 without; kNN alone AUC 0.795
+Drop 2% lowest inner-OOF p(label) rows (noise removal),nested F2m (3 seeds),-0.00065,dropped,t1/research/REPORT.md exp23,0.78043 vs 0.78108
+Drop 10% lowest inner-OOF p(label) rows (noise removal),nested F2m (3 seeds),-0.00477,dropped,t1/research/REPORT.md exp23,0.77631 vs 0.78108; only 0.12% of rows contradict a confident prediction
+scale_pos_weight 3 (binary-F2 training),nested binary F2 (3 seeds),0.00033,dropped,t1/research/REPORT.md exp22,0.83831 vs 0.83798: noise
+"Focal loss gamma 1.5, alpha 0.75",nested binary F2 (3 seeds),0.00035,dropped,t1/research/REPORT.md exp22,0.83833 vs 0.83798: noise
+Early stopping on partial AUC (TPR >= 0.9),nested binary F2 (3 seeds),-0.00052,dropped,t1/research/REPORT.md exp22,0.83746 vs 0.83798
+Hard overrides in class-exclusive zones,nested F2m (3 seeds),0.00001,dropped,t1/research/REPORT.md exp17B,"The model already classifies all 31,055 zone rows correctly"
+Per-group thresholds (missingness groups),nested F2m (3 seeds),-0.00035,dropped,t1/research/REPORT.md exp17C,"0.78166 vs 0.78201: more variance, no gain"
+Per-group isotonic calibration,nested F2m (3 seeds),-0.00055,dropped,t1/research/REPORT.md exp17D,0.78146 vs 0.78201
+Masking at 2x the observed missing rate,nested F2m (3 seeds),-0.00029,dropped,t1/research/REPORT.md exp16,0.78115 vs 0.78144 at 1x: over-masking is no better
 Cut chosen from test score ranks (top-60% of test),not applicable,,rule_excluded,CLAUDE.md (TA answer 16 Nov),Replaced by a fixed OOF-F2 threshold (every parameter computable without the test set)

@@ -1,0 +1,22 @@
+group,label,delta,sd,source,reference
+Calibration,global (shift+kappa),0.00001,0.00005,R3-A,final 3x3 bag 0.79529
+Calibration,per-segment (shift+kappa),0.00000,0.00005,R3-B,final 3x3 bag 0.79529
+Calibration,quantile-level offset + kappa,-0.00001,0.00002,R3-C,final 3x3 bag 0.79529
+Calibration,per-segment offset + kappa,-0.00001,0.00003,R3-D,final 3x3 bag 0.79529
+Calibration,per-decile scale,0.00001,0.00005,R3-E,final 3x3 bag 0.79529
+Calibration,segment x bin scale,-0.00001,0.00004,R3-F,final 3x3 bag 0.79529
+Noise and outliers,drop top 1% residuals,-0.00001,0.00014,R7-02,same-code control 0.79512
+Noise and outliers,drop top 3% residuals,-0.00011,0.00014,R7-03,same-code control 0.79512
+Noise and outliers,drop top 5% residuals,-0.00031,0.00031,R7-04,same-code control 0.79512
+Noise and outliers,drop top 10% residuals,-0.00031,0.00019,R7-05,same-code control 0.79512
+Noise and outliers,Cauchy weights,-0.00018,0.00017,R7-06,same-code control 0.79512
+Noise and outliers,IsolationForest drop 1%,0.00013,0.00015,R8-01,same-code control 0.79512
+Noise and outliers,IsolationForest drop 3%,-0.00016,0.00013,R8-02,same-code control 0.79512
+Noise and outliers,IsolationForest drop 5%,-0.00024,0.00061,R8-03,same-code control 0.79512
+Noise and outliers,Mahalanobis drop 3%,-0.00008,0.00035,R8-04,same-code control 0.79512
+Noise and outliers,13 features only,0.00008,0.00039,R8-05,same-code control 0.79512
+Noise and outliers,8 PCA features added,-0.00007,0.00014,R8-06,same-code control 0.79512
+Ensemble selection,nested LAD stack (12 bases),-0.00003,0.00009,R5-01,final 3x3 bag 0.79529
+Ensemble selection,Caruana greedy on predictions,-0.00004,0.00009,R5-02,final 3x3 bag 0.79529
+Ensemble selection,greedy on log-quantiles,-0.00006,0.00008,R5-03,final 3x3 bag 0.79529
+Ensemble selection,family-equal blend,-0.00003,0.00015,R5-04,final 3x3 bag 0.79529

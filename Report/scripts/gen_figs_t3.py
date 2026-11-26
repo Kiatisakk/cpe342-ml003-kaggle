@@ -275,6 +275,16 @@ def fig_error(p, Q, oof):
     a.legend(fontsize=8, loc="upper left")
     a.set_title("(a) Where the OOF error sits")
     a.grid(axis="x", visible=False)
+    try:
+        import pickle
+        dd = pickle.load(open(os.path.join(OOF, "t3", "research", "cache", "data_v4.pkl"), "rb"))
+        wi = dd["X"]["segment"].values.astype(int) == 3
+        print("whales by IMPUTED segment: rows %.3f, spending %.3f, error share %.4f (paying %.4f, zero-spend %.4f)" % (
+            wi.mean(), y[wi].sum() / y.sum(), e[wi].sum() / e.sum(), e[wi & (y > 0)].sum() / e.sum(), e[wi & (y == 0)].sum() / e.sum()))
+        wsh = e[wi].sum() / e.sum() * 100
+        a.text(0.02, 0.66, "whales incl. imputed segment:\n%.1f%% of the error" % wsh, transform=a.transAxes, ha="left", va="top", fontsize=7.6, color=ps.INK_MUTED)
+    except Exception as ex:  # cache missing: leave the note out
+        print("imputed-segment note skipped:", ex)
     cats = ["payer, multiplicative\nnoise on the amount", "y = 0 but we predict > 0\n(coin flip of paying)", "whale spikes\n(266 redrawn rows)", "payer predicted 0"]
     vals = [49.0, 32.9, 15.4, 2.7]
     yy = np.arange(4)[::-1]
@@ -382,6 +392,70 @@ def fig_ziln_diag(oof):
     save(fig, "fig_t3_ziln_diag.png")
 
 
+def fig_sweep():
+    """Depth sweep by model family (data/t3_sweep.csv) and the stage-1 AUC learning curve."""
+    D = os.path.join(os.path.dirname(HERE), "data")
+    d = pd.read_csv(os.path.join(D, "t3_sweep.csv"))
+    cv = pd.read_csv(os.path.join(D, "t3_clf_curve.csv"))
+    fig, (a, b) = plt.subplots(1, 2, figsize=(9.8, 3.7), gridspec_kw={"width_ratios": [1.55, 1], "wspace": 0.42})
+    rows = [("CatBoost", [3, 4, 6, 8]), ("XGBoost", [3, 5, 7, 9])]
+    yy = {"CatBoost": 3, "XGBoost": 2, "LightGBM offset": 1, "LightGBM no offset": 0}
+    cols = {"CatBoost": ACC, "XGBoost": ps.INK_MUTED, "LightGBM offset": ps.TASK_COLORS[1], "LightGBM no offset": ps.TASK_COLORS[1]}
+    for fam, yv in yy.items():
+        g = d[d.family == fam]
+        a.hlines(yv, g.oof_nmae.min(), g.oof_nmae.max(), color=ps.GRID, lw=2, zorder=1)
+        for _, r in g.iterrows():
+            hollow = fam == "LightGBM no offset"
+            a.scatter(r.oof_nmae, yv, s=60, color="white" if hollow else cols[fam], edgecolor=cols[fam], lw=1.6, zorder=3)
+            lab = (f"d{r.depth}" if str(r.depth).isdigit() else f"{r.depth}")
+            pos = {("CatBoost", "3"): (0.00006, 0.22), ("CatBoost", "4"): (0.0, -0.28), ("CatBoost", "6"): (-0.00006, 0.22), ("CatBoost", "8"): (0, -0.28),
+                   ("XGBoost", "3"): (-0.00004, 0.22), ("XGBoost", "5"): (0.00005, 0.22), ("XGBoost", "7"): (-0.00002, -0.28), ("XGBoost", "9"): (0, 0.22)}
+            dx, dy = pos.get((fam, str(r.depth)), (0, -0.28))
+            a.text(r.oof_nmae + dx, yv + dy, lab, ha="center", va="center", fontsize=7.3)
+    a.axvline(0.79535, color=ACC, lw=1, ls=":")
+    a.text(0.79537, 3.62, "final bag 0.79535", fontsize=7.3, color=ps.INK_MUTED, ha="right")
+    a.set_yticks(list(yy.values()))
+    a.set_yticklabels(["CatBoost", "XGBoost", "LightGBM\n(offset target)", "LightGBM\n(no offset, E03)"], fontsize=8)
+    a.set_ylim(-0.6, 3.9)
+    a.set_xlim(0.7895, 0.7960)
+    a.set_xlabel("OOF NMAE, one seed per point")
+    a.set_title("(a) Amount model: family and depth")
+    a.grid(axis="y", visible=False)
+    b.plot(cv.train_fraction * 100, cv.auc, color=ACC, lw=2.2, marker="o")
+    for _, r in cv.iterrows():
+        b.text(r.train_fraction * 100, r.auc - 0.00035, f"{r.auc:.4f}", ha="center", va="top", fontsize=7.5)
+    b.set_xlim(15, 108)
+    b.set_ylim(0.7805, 0.7850)
+    b.set_xlabel("share of each training fold used (%)")
+    b.set_ylabel("stage-1 OOF AUC")
+    b.set_title("(b) Payer classifier: flat curve")
+    save(fig, "fig_t3_sweep.png")
+
+
+def fig_paired():
+    """Paired deltas (mean +- sd across the 5 folds) of every post-hoc, noise and ensemble experiment."""
+    d = pd.read_csv(os.path.join(os.path.dirname(HERE), "data", "t3_paired_deltas.csv"))
+    groups = list(dict.fromkeys(d.group))
+    fig, axs = plt.subplots(len(groups), 1, figsize=(7.6, 6.4), sharex=True,
+                            gridspec_kw={"height_ratios": [(d.group == g).sum() + 1.2 for g in groups], "hspace": 0.28})
+    for ax, g in zip(axs, groups):
+        s = d[d.group == g].reset_index(drop=True)
+        yv = np.arange(len(s))[::-1]
+        ax.axvline(0, color=ps.INK_MUTED, lw=0.9)
+        ax.errorbar(s["delta"], yv, xerr=s["sd"], fmt="none", ecolor=ps.AXIS, elinewidth=2.2, capsize=2.5, zorder=2)
+        ax.scatter(s["delta"], yv, s=34, color=ACC, edgecolor="white", zorder=3)
+        ax.set_yticks(yv)
+        ax.set_yticklabels([f"{l}  ({sr})" for l, sr in zip(s.label, s.source)], fontsize=7.4)
+        ax.set_title(g, loc="left", fontsize=8.8, fontweight="bold")
+        ax.set_ylim(-0.7, len(s) - 0.3)
+        ax.grid(axis="y", visible=False)
+    axs[-1].set_xlabel("paired change in OOF NMAE (mean $\pm$ sd across folds); noise bar 0.0005")
+    axs[-1].set_xlim(-0.0010, 0.0006)
+    for ax in axs:
+        ax.axvspan(-0.0005, 0.0005, color=ps.GRID, alpha=0.45, zorder=0)
+    save(fig, "fig_t3_paired.png")
+
+
 if __name__ == "__main__":
     fig_target()
     fig_whales()
@@ -394,3 +468,5 @@ if __name__ == "__main__":
     fig_progression()
     fig_evolution()
     fig_ziln_diag(oof)
+    fig_sweep()
+    fig_paired()

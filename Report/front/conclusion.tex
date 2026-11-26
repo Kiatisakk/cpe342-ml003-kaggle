@@ -10,12 +10,34 @@
 \item \textbf{Compliance is part of the method.} Two identifier leaks, a test-rank threshold and a test-prediction prior correction all helped the public score or would have, and we removed or did not use them after the TA's rulings. The compliant pipeline scores slightly lower on the leaderboard and is the one we can defend.
 \end{itemize}
 
-\paragraph{Machine learning in the game industry.} The five tasks show that game platforms generate cheap, plentiful, mostly tabular data in which the useful signal is often in the structure of missing values, ratios and joint ranges rather than in a large model. Decisions are asymmetric: a missed cheater or account takeover costs far more than a review, so metrics such as F2 and F3 and explicit thresholds are the business interface. Model outputs are useful only when the operations team can understand them (which rule fired, which segment, which game), and any model that scores players needs monitoring, because behaviour, content and cheating methods drift. Image models face a shifting content stream (new maps, new seasons), which is why Task 4 needed validation by scene rather than by image.
+\paragraph{Machine learning in the game industry.} The five tasks show that a game platform produces cheap, plentiful, mostly tabular data in which the useful signal is often in the structure of missing values, ratios and joint ranges rather than in a large model. Decisions are asymmetric: a missed cheater or account takeover costs far more than a review, so F2 and F3, and explicit thresholds, are the business interface. Table~\ref{tab:concl-business} ties each output to the decision it would drive, and the numbers come from the task sections.
+
+\begin{table}[H]\centering\scriptsize
+\caption{Business use of each output and the cost or risk to manage.}
+\label{tab:concl-business}
+\begin{tabular}{@{}L{.12\linewidth}L{.40\linewidth}L{.40\linewidth}@{}}
+\toprule
+\textbf{Task} & \textbf{Decision it drives} & \textbf{Cost or risk to manage} \\
+\midrule
+T1 anti-cheat & Rank accounts for the manual review queue; the score orders the queue and the threshold sets its size. & The binary-F2 cut flags 59.8\% of test accounts, about 15,500 of 25,889, because a missed cheater is weighted four times a false alarm. With a review team of fixed size the cut must follow review capacity, so the queue should be worked from the top of the score list. \\
+T2 segments & Choose a campaign per segment (engagement and spending) instead of one message for all players. & Macro F1 is 0.758 because about 3\% of labels are flipped and the classes overlap; a wrong segment costs a poorly targeted offer, not a lost player, so the risk is low and the use is soft. \\
+T3 spending & Forecast monthly revenue, find likely VIP payers, and decide discounts and VIP support. & Half of the players pay nothing and a few whales dominate the error, so a point forecast is weak for individuals; the payer probability and the quantile are more useful than the amount alone. \\
+T4 game title & Route support tickets and verify campaign screenshots by title, and tag gameplay images. & Held-out scene macro F1 is 0.995 but new content is harder than any random fold; low-confidence screenshots should go to a person, not be auto-routed. \\
+T5 account security & Triage security alerts by anomaly type (takeover, selling, bot, VPN abuse). & We flagged 2,104 of 25,889 accounts (8.1\%) with an estimated F3 of about 0.997, but with no labels this is only agreement with the structure of the data; real traffic needs analyst feedback. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Feeding a player-lifetime-value system.} The five outputs fit together as inputs to one player-lifetime-value (LTV) model, which we did not build. T3 gives the expected monthly spend and its uncertainty, and is the base of the LTV. T2 supplies the segment, which sets the horizon and the retention action. T1 and T5 enter as risk: a flagged cheater or a likely hijacked account lowers expected future value and triggers review or protection, so the LTV is discounted by the probability of a ban or a takeover. T4 supplies which game the player engages with, which lets the platform route support and tailor offers by title. In such a system the models must be scored and monitored together, because the same player can appear in several of them, and a shift in one task (new content in T4, a new cheat method in T1) should raise a flag before it reaches the revenue number.
+
+Model outputs are useful only when the operations team can understand them (which rule fired, which segment, which game), and any model that scores players needs monitoring, because behaviour, content and cheating methods drift. Image models face a shifting content stream (new maps, new seasons), which is why Task 4 needed validation by scene rather than by image.
 
 \paragraph{Future improvements.}
 \begin{itemize}[leftmargin=*,itemsep=2pt]
-\item \textbf{Validation.} Select thresholds and blend weights inside nested cross-validation or on a separate holdout (Task 1), and evaluate Task 4 on scenes that are unseen by construction.
-\item \textbf{Task 4.} More backbones no longer moved the public score; the next gains are more likely from handling the dark, low-confidence test images and from checking the train-prior adjustment on a held-out set with a different class mix.
-\item \textbf{Task 5.} Combine the transparent rules with a model trained on real traffic and analyst feedback, and use rolling windows for drift.
-\item \textbf{System level.} Connect the five predictions in an actual lifetime-value model (the course's final system), which we did not build, and measure the effect of each task on that target.
+\item \textbf{Validation.} Select thresholds and blend weights inside nested cross-validation or on a separate holdout (Task 1), and evaluate Task 4 on a held-out set of scenes that is unseen by construction, so that the model choice does not rely on the public leaderboard.
+\item \textbf{Task 4.} More backbones no longer moved the public score. The next gains are more likely from the dark, low-confidence test images and from checking the train-prior adjustment on a set with a different class mix.
+\item \textbf{Task 5.} Obtain labelled incidents from the security team, so the rules can be trained and scored, and use rolling windows to follow drift.
+\item \textbf{Monitoring drift.} Track the share of flagged accounts (T1 and T5), the predicted class mix (T2 and T4) and the zero rate (T3) against their training values, and re-fit when they move.
+\item \textbf{Inference cost.} The final Task 4 system uses a ViT-7B with adapters and several companion models and needs a large GPU. A production version should distil it into one smaller model and report time per image; the Task 1 to 3 pipelines already run on CPU in minutes.
+\item \textbf{System level.} Connect the five predictions in an actual lifetime-value model and measure the effect of each task on that target.
 \end{itemize}

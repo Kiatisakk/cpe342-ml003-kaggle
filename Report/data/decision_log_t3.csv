@@ -24,3 +24,10 @@ CatBoost native categoricals,paired CV NMAE,0.00007,dropped,CLAUDE.md (10 Nov te
 NN-ZILN K=3 blended into the final CatBoost model,OOF NMAE,0,dropped,CLAUDE.md section 4 (NN blend adds 0),"NN_K3 alone 0.7901; plain blend with the final model 0.79529 at weight 0.1, 0.79392 at 0.5 (own check on saved OOF)"
 50/50 robust-model blend,LB public,0,dropped,CLAUDE.md LB log (sub_v18c and v18d),Public score identical to the single model
 Jensen correction + hard zero cut-off (teammate variant),LB public,-0.00011,dropped,CLAUDE.md (13 Nov teammate submissions),v27 vs v25a on the re-released data
+"Nested global (shift, kappa) calibration of the final model",paired nested CV NMAE,0.00001,dropped,local pipeline REPORT (R3-A),+-0.00005 across folds; fitted parameters about (0.02; 1.00): already calibrated
+Drop the top 5% residual rows from training,paired CV NMAE,-0.00031,dropped,local pipeline REPORT (R7-04),Also worse for 1%/3%/10%: noise is homogeneous (robust sd 0.17)
+IsolationForest drop of 1% of payers,paired CV NMAE,0.00013,dropped,local pipeline REPORT (R8-01),+-0.00015; not monotone (3% gives -0.00016): noise
+Nested LAD stack of 12 base models,paired nested CV NMAE,-0.00003,dropped,local pipeline REPORT (R5-01),+-0.00009; weights unstable across folds
+Family-equal untuned blend (CatBoost d3/d4/d6 and XGBoost d5),paired CV NMAE,-0.00003,dropped,local pipeline REPORT (R5-04),+-0.00015; kept as an alternative file only
+CatBoost depth 8 instead of depth 4,OOF NMAE (one seed),-0.00071,dropped,local pipeline REPORT (E12 vs E30),0.79434 vs 0.79505; depths 3 to 6 are flat
+New fold split (seed 7): v4-style XGBoost vs final-recipe CatBoost,paired CV NMAE,0.00348,kept,local pipeline REPORT (R2-09),+-0.00045; 5 of 5 folds up; original folds +0.00344

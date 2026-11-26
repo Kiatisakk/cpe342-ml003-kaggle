@@ -34,3 +34,4 @@ LoRA weight 0.9 instead of 0.85 with the train prior,LB public,-0.00002,dropped,
 LoRA multi-depth adapters as extra members (c24f12 63 errors and c40f28 69 errors on fold 0),scene fold 0 errors,,kept,CLAUDE.md LoRA queue results (20 Nov),Weaker than l75 (42) on fold 0; kept in the final recipe only with weight 0.04 each
 Concat-feature MLP head instead of linear heads,random OOF macro F1,0.0053,dropped,CLAUDE.md 16 Nov concat MLP note,OOF .9826 vs .9632 for the linear head but the LB gave +0.00002 when removed
 Variants of the v85a recipe (soup + 2-view head; raw l75; v74b base blend; soup + l75la),LB public,-0.00036,dropped,CLAUDE.md LB log (v87 round),Four variants scored 0.87310-0.87342 versus 0.87346
+Realign Task 4 predictions to the re-released test.csv by file_name (no retraining),LB public,0.1375,kept,CLAUDE.md LB log (sub_v25a vs v24b),Old row order matched the new one only at chance (21%); Task 4 had scored at chance since the first release
