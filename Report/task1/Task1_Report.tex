@@ -2,8 +2,8 @@
 \documentclass[11pt,a4paper]{article}
 \usepackage[a4paper,left=25mm,right=25mm,top=22mm,bottom=22mm]{geometry}
 \usepackage{fontspec}
-\setmainfont{Latin Modern Roman}
-\setmonofont{Latin Modern Mono}[Scale=MatchLowercase]
+\IfFontExistsTF{Latin Modern Roman}{\setmainfont{Latin Modern Roman}}{\setmainfont{Times New Roman}}
+\IfFontExistsTF{Latin Modern Mono}{\setmonofont{Latin Modern Mono}[Scale=MatchLowercase]}{\setmonofont{Consolas}[Scale=MatchLowercase]}
 \usepackage{graphicx,booktabs,longtable,array}
 \usepackage[hidelinks]{hyperref}
 \hypersetup{pdftitle={Task 1: Anti-Cheat Detection},pdfauthor={Team ML003}}
@@ -241,17 +241,34 @@ We evaluated 251 candidate thresholds across quantiles 0.20–0.70 of the blende
 \endfoot
 Model A · LightGBM with Masking & 0.89482 & — \\
 Model B · Logistic Regression Stack & 0.89283 & — \\
+Model C - XGBoost base learner & 0.89128 & — \\
+Model C - LightGBM base learner & 0.89193 & — \\
+Model C - CatBoost base learner & 0.89116 & — \\
 Final A/B/C Ensemble & \textbf{0.89501} & \textbf{0.83979} \\
 \end{longtable}
 \endgroup
 
-{\centering\small Table 3. OOF results for Models A and B and the final ensemble\par}\medskip
+{\centering\small Table 3. OOF results for recorded model components and the final ensemble\par}\medskip
 
 \textbf{Ranking.} Table 3 shows an OOF ROC-AUC gain of \textbf{0.00019} over Model A.
 
 \textbf{Classification.} The ensemble reached \textbf{0.83979} binary F2 at an OOF threshold of \textbf{0.37264}. The component F2 values were not reported, so Table 3 cannot establish an F2 gain over Model A.
 
 \textbf{Review volume.} The same threshold flagged \textbf{62.80\%} of OOF accounts and \textbf{59.81\%} of test accounts. These are the shares sent for review if every flagged account is investigated.
+
+\subsection{Pipeline Improvement}
+
+\subsubsection*{1. Base Learner Comparison}
+
+The A/B/C labels group multiple learners rather than three single algorithms. Model B stacks LightGBM (OOF ROC-AUC 0.89285), ExtraTrees (0.86112), PyTorch MLP (0.84681), and spline LinearSVC (0.83907) with logistic regression; the stack reached 0.89283. Model C's XGBoost, LightGBM, and CatBoost base-learner scores are listed in Table 3. Each recorded Model C learner and the Model B stack scored below Model A.
+
+\subsubsection*{2. Input and Score Processing}
+
+Preprocessing differed by learner: Model A uses four randomly masked copies per fitting fold; Model B uses learner-specific imputation and transformations; Model C adds categorical quantile bins. The feature-engineering methods are described in Section 2.2. After prediction, ECDF alignment puts component scores on a common scale before the weighted blend; the OOF F2 threshold selection is described in Section 2.4.
+
+\subsubsection*{3. What the Comparison Shows}
+
+The final blend improves OOF ROC-AUC by 0.00019 over Model A (Table 3). Component F2 values, a raw-feature baseline, and isolated ablations were not recorded, so the comparison cannot identify which learner or preprocessing step produced the gain or establish a component-level F2 improvement.
 
 \subsection{Error Analysis and Limitations}
 
