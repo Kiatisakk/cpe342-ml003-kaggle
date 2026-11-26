@@ -84,6 +84,83 @@ def main():
     plt.close(fig)
     print("saved", OUT)
 
+# ---------------------------------------------------------------- wave 4 additions
+LC_N = np.array([7265, 14530, 25428, 36326, 50856, 72652])
+LC_F2M = np.array([0.7625, 0.7725, 0.7767, 0.7787, 0.7796, 0.7811])   # t1/research/out/exp18.log
+LC_AUC = np.array([0.8705, 0.8851, 0.8894, 0.8911, 0.8921, 0.8932])
+LC_ASYMP = (0.7833, 0.8939)                                          # power-law fit reported in exp18.log
+
+
+def fig_ceiling():
+    from scipy.optimize import curve_fit
+    apply_style()
+    fig, axs = plt.subplots(1, 2, figsize=(8.6, 3.5))
+    for ax, y, asy, lab in [(axs[0], LC_F2M, LC_ASYMP[0], "Nested macro F2"), (axs[1], LC_AUC, LC_ASYMP[1], "ROC-AUC")]:
+        f = lambda n, s, a, b: s - a * (n / 1e4) ** (-b)
+        try:
+            pr, _ = curve_fit(f, LC_N, y, p0=[asy, 0.02, 0.7], maxfev=20000)
+        except Exception:
+            pr = None
+        xs = np.linspace(LC_N[0], 8e5, 300)
+        if pr is not None:
+            ax.plot(xs, f(xs, *pr), color=C1, lw=1.8, label="power-law fit")
+        ax.scatter(LC_N, y, color=C1, s=36, zorder=5, edgecolor="white", label="measured (3 seeds)")
+        ax.axhline(asy, color=INK_MUTED, ls="--", lw=1.1)
+        ax.text(1.2e5, asy - (0.0025 if lab != "ROC-AUC" else 0.0017), f"asymptote {asy:.4f}", fontsize=8.5, color=INK)
+        ax.set_xscale("log")
+        ax.set_xlabel("Training rows per fold")
+        ax.set_ylabel(lab)
+        ax.legend(loc="lower right")
+    fig.tight_layout()
+    out = HERE.parent / "task1" / "figures" / "fig_t1_ceiling.png"
+    fig.savefig(out)
+    plt.close(fig)
+    print("saved", out)
+
+
+def fig_missing_auc():
+    """OOF AUC of the final LightGBM (3-split-seed averaged OOF) by missingness group."""
+    from sklearn.metrics import roc_auc_score
+    apply_style()
+    tr = pd.read_csv(ROOT / "cpe342-kaggle-main" / "01_binary_classification" / "train.csv")
+    d = tr[tr["is_cheater"].notna()].reset_index(drop=True)
+    y = d["is_cheater"].astype(int).values
+    o = np.load(ROOT / "t1/research/best_oof_avg3.npy")
+    key = ["reports_received", "friend_network_size", "account_age_days", "crosshair_placement"]
+    nk = d[key].isna().sum(1).values
+    rows = [("None of the four\nmissing", nk == 0)]
+    names = {"reports_received": "reports", "friend_network_size": "friends",
+             "account_age_days": "age", "crosshair_placement": "crosshair"}
+    for c in key:
+        rows.append((f"{names[c]}\nmissing", d[c].isna().values))
+    rows.append(("2+ of the four\nmissing", nk >= 2))
+    labs, aucs, ns = [], [], []
+    for l, m in rows:
+        labs.append(l)
+        aucs.append(roc_auc_score(y[m], o[m]))
+        ns.append(int(m.sum()))
+        print(f"{l!r}: n={m.sum()} AUC={aucs[-1]:.4f}")
+    allauc = roc_auc_score(y, o)
+    fig, ax = plt.subplots(figsize=(8.0, 3.6))
+    cols = [C1 if i == 0 else INK_MUTED for i in range(len(labs))]
+    bars = ax.bar(range(len(labs)), aucs, color=cols, width=0.62)
+    for i, (a, n) in enumerate(zip(aucs, ns)):
+        ax.text(i, a + 0.002, f"{a:.3f}\n(n={n:,})", ha="center", fontsize=8.3, color=INK)
+    ax.axhline(allauc, color=INK, ls=":", lw=1.1)
+    ax.text(len(labs) - 0.5, allauc + 0.002, f"all rows {allauc:.3f}", ha="right", fontsize=8.5, color=INK)
+    ax.set_xticks(range(len(labs)))
+    ax.set_xticklabels(labs, fontsize=8.5)
+    ax.set_ylim(0.80, 0.94)
+    ax.set_ylabel("OOF ROC-AUC")
+    ax.grid(axis="x", visible=False)
+    fig.tight_layout()
+    out = HERE.parent / "task1" / "figures" / "fig_t1_missing_auc.png"
+    fig.savefig(out)
+    plt.close(fig)
+    print("saved", out)
+
 
 if __name__ == "__main__":
     main()
+    fig_ceiling()
+    fig_missing_auc()

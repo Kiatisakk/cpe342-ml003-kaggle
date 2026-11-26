@@ -1,0 +1,11 @@
+family,depth,oof_nmae,source,note
+CatBoost,3,0.79507,E32,offset + extra features; lr 0.06; 1 seed
+CatBoost,4,0.79505,E30,offset + extra features; lr 0.05; 1 seed
+CatBoost,6,0.79497,E29,offset + extra features; lr 0.04; 1 seed
+CatBoost,8,0.79434,E12,offset + extra features; lr 0.06; 1 seed
+XGBoost,3,0.79410,E34,offset + extra features; lr 0.05
+XGBoost,5,0.79424,E15,offset + extra features; lr 0.05
+XGBoost,7,0.79405,E07,offset + extra features; lr 0.05 (E05 without offset: 0.79162)
+XGBoost,9,0.79321,E16,offset + extra features; lr 0.05; min child weight 10
+LightGBM offset,31 leaves,0.79390,E26,per-alpha quantile regressions with the offset target; lr 0.05
+LightGBM no offset,63 leaves,0.79002,E03,per-alpha quantile regressions on log y without offset; lr 0.03

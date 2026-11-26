@@ -64,3 +64,8 @@ Compile output files are git-ignored.
 3. Resolved 26 Nov: the team confirmed the T1 test-rank-cut wording and the T2 v10c/v10d leak attribution.
 4. The teammate's PR branch lives on a fork; it was fetched through `refs/pull/1/head` (local branch `task1-report`), and `report` is based on it.
 5. Pre-existing T1 numbers are the teammate's (notebook-derived); the 56 Model A features and the other counts were not re-verified in wave 1.
+
+## Citation convention
+- Bibliography: `references.bib`, natbib numeric (`unsrtnat`, `[numbers,sort&compress]`), printed as "References" after the Conclusion. Cite with `\citep{key}` (several: `\citep{a,b}`); never `\cite`.
+- Cite where a method or model is first named in a task file. Keys are fixed (see `references.bib`); ask before adding new ones, and every new entry must be a real, checkable reference.
+- Standalone task builds show `[?]` (no bibliography pass); this is expected. `main.tex` must have no undefined citations after `latexmk`.

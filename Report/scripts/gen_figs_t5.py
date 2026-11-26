@@ -696,6 +696,283 @@ ZBASES = bases[:len([b for b in bases])]
 ZMAT = np.nan_to_num(np.stack(Z, 1))
 ZBASES = [b for b in bases]
 
+# ---------------------------------------------------------------------------------------------
+# Discovery path of the 3-metric box, box precision and negative scans (12 Nov release)
+# ---------------------------------------------------------------------------------------------
+import itertools  # noqa: E402
+
+DISC = ["device_count", "refund_count", "guild_changes"]
+FLAGS = ["password_changed", "vpn_usage", "suspicious_login_time", "mass_item_sale"]
+PMET = [b for b in bases]                     # 27 behavioural metrics (no lat/lon)
+CONTM = [b for b in PMET if b not in DISC]    # 24 continuous metrics
+MEANS = pd.DataFrame({b: mean4(b) for b in CONTM})
+MEANS["account_age_days"] = X["account_age_days"].values
+MEANS["behavior_stability"] = X["behavior_stability"].values   # 26 features -> C(26,3)=2600, C(26,4)=14950
+SDS = pd.DataFrame({b: X[[f"{b}_{p}" for p in P]].astype(float).std(axis=1).values for b in CONTM})
+
+
+def pairwise_tails(o):
+    """5%-tail co-occurrence of every cross-metric pair outside the union (as in the discovery round)."""
+    Mo = MEANS[o]
+    med = Mo.median()
+    sc = (Mo.quantile(.75) - Mo.quantile(.25)) / 1.349
+    Zr_ = (Mo - med) / sc
+    FF = pd.concat([Zr_.add_suffix("|mean"), SDS[o].add_suffix("|sd")], axis=1)
+    T = {}
+    for c in FF.columns:
+        T[c + "<"] = (FF[c] < FF[c].quantile(.05)).values
+        T[c + ">"] = (FF[c] > FF[c].quantile(.95)).values
+    for f in FLAGS:
+        T[f] = (X.loc[o, f] == 1).values
+    T = pd.DataFrame(T).astype(float)
+    cnt = (T.T @ T).values
+    pr = T.mean().values
+    E = np.outer(pr, pr) * len(T)
+    Zp = (cnt - E) / np.sqrt(E + 1e-9)
+    nm = list(T.columns)
+    base_of = lambda s: s.rstrip("<>").split("|")[0]  # noqa: E731
+    return nm, cnt, E, Zp, base_of
+
+
+def triple_scan(F, B=8):
+    R = F.rank(pct=True, method="first").values
+    ok = ~F.isna().values
+    Q = np.minimum((np.nan_to_num(R) * B).astype(int), B - 1)
+    out = []
+    for i, j, k in itertools.combinations(range(F.shape[1]), 3):
+        v = ok[:, i] & ok[:, j] & ok[:, k]
+        c = np.bincount(Q[v, i] * B * B + Q[v, j] * B + Q[v, k], minlength=B ** 3)
+        e = v.sum() / B ** 3
+        out.append(((c.max() - e) / np.sqrt(e), F.columns[i], F.columns[j], F.columns[k], int(c.max()), e))
+    return sorted(out, key=lambda t: -t[0])
+
+
+def scan4(D, B=5):
+    R = D.rank(pct=True, method="first").values
+    ok = ~D.isna().values
+    Q = np.minimum((np.nan_to_num(R) * B).astype(int), B - 1)
+    best = (-1, None, 0, 0)
+    for c in itertools.combinations(range(D.shape[1]), 4):
+        v = ok[:, c].all(1)
+        idx = ((Q[v, c[0]] * B + Q[v, c[1]]) * B + Q[v, c[2]]) * B + Q[v, c[3]]
+        cnt = np.bincount(idx, minlength=B ** 4)
+        e = v.sum() / B ** 4
+        z = (cnt.max() - e) / np.sqrt(e)
+        if z > best[0]:
+            best = (z, [D.columns[i] for i in c], int(cnt.max()), e)
+    return best
+
+
+def box_pair_scan(rows, K=13):
+    """Indicators 'all 4 periods in [a,b]' on a K-point grid (intervals up to half the range), cross-metric pairs."""
+    ind, lab = [], []
+    for b in CONTM:
+        m = X.loc[rows, [f"{b}_{p}" for p in P]].values.astype(float)
+        lo, hi = np.nanpercentile(m, .5), np.nanpercentile(m, 99.5)
+        g = np.linspace(lo, hi, K)
+        for i in range(K):
+            for j in range(i + 1, K):
+                if g[j] - g[i] > (hi - lo) / 2:
+                    continue
+                ind.append((((m >= g[i]) & (m <= g[j])) | np.isnan(m)).all(1))
+                lab.append((b, g[i], g[j]))
+    I = np.array(ind, dtype=np.float32)
+    cnt = I @ I.T
+    pr = I.mean(1)
+    n = I.shape[1]
+    E = np.outer(pr, pr) * n
+    Zb = (cnt - E) / np.sqrt(E + 1)
+    names = np.array([l[0] for l in lab])
+    valid = (names[:, None] != names[None, :]) & (E >= 2) & np.triu(np.ones(E.shape, dtype=bool), 1)
+    zz = np.where(valid, Zb, -np.inf)
+    a, c = np.unravel_index(np.argmax(zz), zz.shape)
+    return float(zz[a, c]), lab[a], lab[c], int(cnt[a, c]), float(E[a, c]), int(valid.sum()), len(lab)
+
+
+def fig_discovery():
+    res = {}
+    o = ~union
+    nm, cnt, E, Zp, base_of = pairwise_tails(o)
+    bs = [base_of(s) for s in nm]
+    ub = sorted({b for b in bs if b in CONTM + ["account_age_days", "behavior_stability"]})
+    H_ = np.full((len(ub), len(ub)), np.nan)
+    for i in range(len(nm)):
+        for j in range(i + 1, len(nm)):
+            if bs[i] == bs[j] or bs[i] not in ub or bs[j] not in ub:
+                continue
+            ii, jj = ub.index(bs[i]), ub.index(bs[j])
+            if np.isnan(H_[ii, jj]) or Zp[i, j] > H_[ii, jj]:
+                H_[ii, jj] = H_[jj, ii] = Zp[i, j]
+    flat = sorted([(Zp[i, j], nm[i], nm[j], int(cnt[i, j]), float(E[i, j])) for i in range(len(nm)) for j in range(i + 1, len(nm))
+                   if bs[i] != bs[j]], reverse=True)
+    res["pair_top"] = flat[:3]
+    res["pair_second_z"] = [f for f in flat if {"accuracy_std", "kda_std"} != {base_of(f[1]), base_of(f[2])}][0][:3]
+    res["n_pairs_base"] = len(ub) * (len(ub) - 1) // 2
+    ia, ik = ub.index("accuracy_std"), ub.index("kda_std")
+    fig, ax = plt.subplots(figsize=(6.4, 5.4))
+    im = ax.imshow(H_, cmap="Greys", vmin=0, vmax=8, origin="lower")
+    ax.set_xticks(range(len(ub)))
+    ax.set_yticks(range(len(ub)))
+    ax.set_xticklabels(ub, rotation=90, fontsize=5.6)
+    ax.set_yticklabels(ub, fontsize=5.6)
+    ax.grid(False)
+    for (r_, c_) in [(ia, ik), (ik, ia)]:
+        ax.add_patch(plt.Rectangle((c_ - .5, r_ - .5), 1, 1, fill=False, ec=C5, lw=2.2))
+    t0 = res["pair_top"][0]
+    ax.annotate(f"accuracy_std x kda_std\nobserved {t0[3]} vs {t0[4]:.0f} expected\nz = {t0[0]:.1f}",
+                xy=(min(ik, ia) + .5, max(ik, ia) + .5), xytext=(1, len(ub) - 3.5), fontsize=7, color=INK, fontweight="bold",
+                bbox=dict(fc="white", ec=C5, lw=1.2, pad=3))
+    cb = fig.colorbar(im, ax=ax, fraction=.04, pad=.02)
+    cb.set_label("largest tail co-occurrence z of the pair (colour clipped at 8)", fontsize=6.5)
+    cb.ax.tick_params(labelsize=6)
+    ax.set_title(f"{len(ub)} features, {res['n_pairs_base']} pairs, outside the {int(union.sum()):,}-row union", fontsize=8, loc="left")
+    fig.tight_layout()
+    save(fig, "fig_t5_pairheat.png")
+
+    t6 = triple_scan(MEANS[o], 8)
+    zs = np.array([t[0] for t in t6])
+    res["triple_n"] = len(t6)
+    res["triple_top"] = t6[0]
+    res["triple_median"] = float(np.median(zs))
+    res["triple_next"] = [t for t in t6 if {"accuracy_std", "kda_std", "performance_stability"} != {t[1], t[2], t[3]}][0]
+    res["triple_withpair_n"] = len([t for t in t6 if {"accuracy_std", "kda_std"} <= {t[1], t[2], t[3]}])
+    fig, ax = plt.subplots(figsize=(6.3, 2.7))
+    ax.hist(zs, bins=60, color=BASE, edgecolor="white", lw=.3)
+    ax.set_yscale("log")
+    ax.axvline(res["triple_median"], color=INK, lw=1, ls="--")
+    ax.text(res["triple_median"] + .2, 300, f"median z = {res['triple_median']:.1f}", fontsize=7.2, color=INK)
+    t0 = res["triple_top"]
+    ax.axvline(t0[0], color=C5, lw=2)
+    ax.annotate(f"({t0[1]}, {t0[2]}, {t0[3]})\nz = {t0[0]:.1f}: {t0[4]} rows in one cell,\n{t0[5]:.0f} expected",
+                xy=(t0[0], 1.5), xytext=(t0[0] - 9, 25), fontsize=7, color=INK, fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=C5, lw=1.2))
+    ax.set_xlabel(f"grid-scan z of each of the {len(t6):,} feature triples (8 x 8 x 8 rank cells, fullest cell)", fontsize=7.5)
+    ax.set_ylabel("triples (log scale)", fontsize=7.5)
+    ax.tick_params(labelsize=7)
+    fig.tight_layout()
+    save(fig, "fig_t5_triplescan.png")
+    return res
+
+
+def box_stats():
+    """Edges, null precision and sensitivity of the 3-metric box."""
+    mets = [("performance_stability", (.85, .95)), ("kda_std", (.7, 1.0)), ("accuracy_std", (9., 12.))]
+    members = acckda & ~union
+    res = {"members": int(members.sum())}
+    res["edges"] = {}
+    for b, (lo, hi) in mets:
+        v = X.loc[members, [f"{b}_{p}" for p in P]].values.astype(float)
+        res["edges"][b] = (float(np.nanmin(v)), float(np.nanmax(v)))
+    base_rows = ~union & ~acckda
+    dists = []
+    for b, (lo, hi) in mets:
+        m = X.loc[base_rows, [f"{b}_{p}" for p in P]].values.astype(float)
+        out_ = ((m < lo) | (m > hi)).sum(1)
+        dists.append(np.bincount(out_, minlength=5)[:5] / len(m))
+    conv = np.convolve(np.convolve(dists[0], dists[1]), dists[2])
+    nrows = int((~union).sum())
+    tot = 0
+    for b, (lo, hi) in mets:
+        m = X.loc[~union, [f"{b}_{p}" for p in P]].values.astype(float)
+        tot = tot + ((m < lo) | (m > hi)).sum(1)
+    res["null_table"] = [(k, int((tot == k).sum()), float(conv[k] * nrows)) for k in range(4)]
+    res["precision"] = 1 - res["null_table"][0][2] / res["null_table"][0][1]
+    scales = np.linspace(.7, 1.3, 61)
+    def count_at(scl):
+        ok = np.ones(len(X), bool)
+        for b, (lo, hi) in mets:
+            c_, h_ = (lo + hi) / 2, (hi - lo) / 2 * scl[b]
+            ok &= inbox(b, c_ - h_, c_ + h_)
+        return int((ok & ~union).sum())
+    curves = {"all three": [count_at({b: s_ for b, _ in mets}) for s_ in scales]}
+    for b0, _ in mets:
+        curves[b0] = [count_at({b: (s_ if b == b0 else 1.) for b, _ in mets}) for s_ in scales]
+    res["n_at"] = {k: {sc: v[int(np.argmin(np.abs(scales - sc)))] for sc in (.8, .9, 1.0, 1.1, 1.3)} for k, v in curves.items()}
+    fig, ax = plt.subplots(figsize=(6.3, 2.9))
+    sty = {"all three": (C5, 2.2, "-"), "performance_stability": (INK, 1.2, "--"), "kda_std": (BLUE, 1.2, "-."), "accuracy_std": (AMBER, 1.2, ":")}
+    for k, v in curves.items():
+        ax.plot(scales * 100, v, color=sty[k][0], lw=sty[k][1], ls=sty[k][2], label=("only " + k + " scaled") if k != "all three" else "all three intervals scaled")
+    ax.axvline(100, color=INK, lw=.8, ls="--")
+    ax.set_xlabel("scale of the interval(s) around the centre (100% = the box of the notebook)", fontsize=7.5)
+    ax.set_ylabel("rows inside, outside the union", fontsize=7.5)
+    ax.tick_params(labelsize=7)
+    ax.legend(fontsize=6.5, loc="lower right")
+    fig.tight_layout()
+    save(fig, "fig_t5_boxsens.png")
+    return res
+
+
+def negative_scans():
+    res = {}
+    o = ~final
+    res["boxpair_all"] = box_pair_scan(np.ones(len(X), bool))
+    res["boxpair_out"] = box_pair_scan(o)
+    Fn = MEANS[o].reset_index(drop=True)
+    res["scan4_real"] = scan4(Fn)
+    nul = []
+    for s in (1, 2):
+        g = np.random.default_rng(s)
+        nul.append(scan4(pd.DataFrame({c: g.permutation(Fn[c].values) for c in Fn.columns}))[0])
+    res["scan4_null"] = nul
+    res["scan4_cal"] = scan4(MEANS[o | (acckda & ~union)].reset_index(drop=True))[0]
+    ok = o & ~np.isnan(hl) & ~np.isnan(hn)
+    h, _, _ = np.histogram2d(hl[ok], hn[ok], bins=[np.arange(-90, 90.5, .5), np.arange(-180, 180.5, .5)])
+    res["geo_max"] = int(h.max())
+    try:
+        from sklearn.cluster import HDBSCAN
+        from sklearn.preprocessing import StandardScaler
+        D = Fn.fillna(Fn.median())
+        sub = StandardScaler().fit_transform(D.sample(6000, random_state=0).values)
+        lab_r = HDBSCAN(min_cluster_size=60).fit_predict(sub)
+        gs = np.random.default_rng(3)
+        shf = np.stack([gs.permutation(sub[:, i]) for i in range(sub.shape[1])], 1)
+        lab_s = HDBSCAN(min_cluster_size=60).fit_predict(shf)
+        res["hdb_real"] = (int(lab_r.max() + 1), int((lab_r == -1).sum()))
+        res["hdb_shuf"] = (int(lab_s.max() + 1), int((lab_s == -1).sum()))
+    except Exception as e:  # pragma: no cover
+        res["hdb_err"] = str(e)
+    return res
+
+
+def write_scan_csv(disc, bx, neg):
+    R = "release 12 Nov"
+    rows = []
+    t = disc["pair_top"][0]
+    rows.append(("pairwise_tail_top", R, f"z={t[0]:.2f}", f"{t[1]} x {t[2]} observed {t[3]} expected {t[4]:.1f}"))
+    rows.append(("pairwise_tail_next_best", R, f"z={disc['pair_second_z'][0]:.2f}", f"{disc['pair_second_z'][1]} x {disc['pair_second_z'][2]}"))
+    t = disc["triple_top"]
+    rows.append(("triple_scan_top", R, f"z={t[0]:.2f}", f"{t[1]},{t[2]},{t[3]} cell {t[4]} expected {t[5]:.1f}; {disc['triple_n']} triples, median z {disc['triple_median']:.2f}"))
+    t = disc["triple_next"]
+    rows.append(("triple_scan_best_other", R, f"z={t[0]:.2f}", f"{t[1]},{t[2]},{t[3]}"))
+    rows.append(("box_members", R, str(bx["members"]), "rows inside the box outside the union"))
+    for b, (lo, hi) in bx["edges"].items():
+        rows.append((f"box_edges_{b}", R, f"[{lo:.4f},{hi:.4f}]", "min/max of the per-period values of the box members"))
+    for k, obs, exp in bx["null_table"]:
+        rows.append((f"null_out_of_box_{k}", R, f"obs {obs} exp {exp:.2f}", "rows (outside the union) with k observed out-of-box period values"))
+    for k, d in bx["n_at"].items():
+        rows.append((f"sensitivity_{k}", R, f"80%: {d[.8]}, 90%: {d[.9]}, 100%: {d[1.0]}, 110%: {d[1.1]}, 130%: {d[1.3]}", "rows inside after scaling the interval(s) around the centre"))
+    for key in ("boxpair_all", "boxpair_out"):
+        r = neg[key]
+        rows.append((key, R, f"z={r[0]:.2f}", f"{r[1][0]} x {r[2][0]}; {r[5]} valid pairs of {r[6]} indicators"))
+    r = neg["scan4_real"]
+    rows.append(("scan4_real", R, f"z={r[0]:.2f}", ", ".join(r[1])))
+    rows.append(("scan4_null", R, str([round(float(x), 2) for x in neg["scan4_null"]]), "column-shuffled nulls"))
+    rows.append(("scan4_calibration", R, f"z={neg['scan4_cal']:.2f}", "box rows put back"))
+    rows.append(("geo_densest_cell", R, str(neg["geo_max"]), "rows in the densest 0.5 degree home cell outside the final set"))
+    if "hdb_real" in neg:
+        rows.append(("hdbscan_real_vs_shuffled", R, f"{neg['hdb_real']} / {neg['hdb_shuf']}", "(clusters, noise rows), 6,000 normal rows"))
+    pd.DataFrame(rows, columns=["quantity", "release", "value", "note"]).to_csv(os.path.join(ROOT, "data", "t5_scan_summary.csv"), index=False)
+
+
+def run_discovery():
+    disc = fig_discovery()
+    bx = box_stats()
+    neg = negative_scans()
+    write_scan_csv(disc, bx, neg)
+    for k, v in {**disc, **{"bx_" + k: v for k, v in bx.items()}, **{"neg_" + k: v for k, v in neg.items()}}.items():
+        print(k, v)
+
+
 if __name__ == "__main__":
     apply_style()
     plt.rcParams["savefig.bbox"] = "tight"
@@ -723,3 +1000,4 @@ if __name__ == "__main__":
     gs_ = fig_gapscan()
     gs_.pop("df")
     print("gapscan", gs_)
+    run_discovery()

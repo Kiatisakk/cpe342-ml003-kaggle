@@ -1,0 +1,24 @@
+quantity,release,value,note
+pairwise_tail_top,release 12 Nov,z=20.85,accuracy_std|mean> x kda_std|mean> observed 222 expected 60.2
+pairwise_tail_next_best,release 12 Nov,z=4.36,kda_std|mean> x performance_stability|sd<
+triple_scan_top,release 12 Nov,z=17.20,"accuracy_std,kda_std,performance_stability cell 165 expected 47.0; 2600 triples, median z 3.06"
+triple_scan_best_other,release 12 Nov,z=7.43,"accuracy_std,kda_mean,kda_std"
+box_members,release 12 Nov,244,rows inside the box outside the union
+box_edges_performance_stability,release 12 Nov,"[0.8502,0.9497]",min/max of the per-period values of the box members
+box_edges_kda_std,release 12 Nov,"[0.7009,0.9999]",min/max of the per-period values of the box members
+box_edges_accuracy_std,release 12 Nov,"[9.0071,11.9979]",min/max of the per-period values of the box members
+null_out_of_box_0,release 12 Nov,obs 244 exp 0.95,rows (outside the union) with k observed out-of-box period values
+null_out_of_box_1,release 12 Nov,obs 6 exp 7.81,rows (outside the union) with k observed out-of-box period values
+null_out_of_box_2,release 12 Nov,obs 32 exp 32.13,rows (outside the union) with k observed out-of-box period values
+null_out_of_box_3,release 12 Nov,obs 90 exp 95.99,rows (outside the union) with k observed out-of-box period values
+sensitivity_all three,release 12 Nov,"80%: 11, 90%: 70, 100%: 244, 110%: 244, 130%: 249",rows inside after scaling the interval(s) around the centre
+sensitivity_performance_stability,release 12 Nov,"80%: 111, 90%: 163, 100%: 244, 110%: 244, 130%: 244",rows inside after scaling the interval(s) around the centre
+sensitivity_kda_std,release 12 Nov,"80%: 103, 90%: 159, 100%: 244, 110%: 244, 130%: 244",rows inside after scaling the interval(s) around the centre
+sensitivity_accuracy_std,release 12 Nov,"80%: 92, 90%: 157, 100%: 244, 110%: 244, 130%: 246",rows inside after scaling the interval(s) around the centre
+boxpair_all,release 12 Nov,z=64.53,performance_stability x play_pattern_consistency; 715437 valid pairs of 1333 indicators
+boxpair_out,release 12 Nov,z=4.54,kda_mean x login_count; 710046 valid pairs of 1334 indicators
+scan4_real,release 12 Nov,z=5.87,"friend_removes, kda_std, account_age_days, behavior_stability"
+scan4_null,release 12 Nov,"[5.83, 5.66]",column-shuffled nulls
+scan4_calibration,release 12 Nov,z=11.70,box rows put back
+geo_densest_cell,release 12 Nov,4,rows in the densest 0.5 degree home cell outside the final set
+hdbscan_real_vs_shuffled,release 12 Nov,"(0, 6000) / (0, 6000)","(clusters, noise rows), 6,000 normal rows"

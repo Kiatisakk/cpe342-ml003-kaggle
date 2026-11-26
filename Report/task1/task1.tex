@@ -214,6 +214,26 @@ Final A/B/C Ensemble & \textbf{0.89501} & \textbf{0.83979} \\
 
 \paragraph{Pipeline improvements.} The A/B/C labels group multiple learners rather than three single algorithms. Model B stacks LightGBM (OOF ROC-AUC 0.89285), ExtraTrees (0.86112), PyTorch MLP (0.84681), and spline LinearSVC (0.83907) with logistic regression; the stack reached 0.89283. Model C's XGBoost, LightGBM, and CatBoost base-learner scores are listed in Table~\ref{tab:t1-results}. Each recorded Model C learner and the Model B stack scored below Model A. Preprocessing differed by learner: Model A uses four randomly masked copies per fitting fold; Model B uses learner-specific imputation and transformations; Model C adds categorical quantile bins. After prediction, ECDF alignment puts component scores on a common scale before the weighted blend.
 
+\paragraph{Standalone model comparison.} During the research phase we also compared other model families on the same labeled rows (Table~\ref{tab:t1-compare}). These scores are \emph{macro} F2 (F2m, both classes, threshold chosen nested or from OOF), because that was the metric under study at the time; the final leaderboard metric is binary F2 (Table~\ref{tab:t1-results}), so the two tables must not be compared number by number. Gradient-boosted trees \citep{xgboost,lightgbm,catboost}, HistGradientBoosting \citep{sklearn}, TabPFN \citep{tabpfn} and an explainable boosting machine \citep{ebm} all land between 0.7786 and 0.7807, which is within about 0.002 of each other; a mixture naive Bayes \citep{naivebayes} and a from-scratch neural network are clearly lower. Blends of the strongest models stayed within noise of the best single model, so ensembling adds little here.
+
+\begin{table}[H]\centering\small
+\caption{Standalone models in the research phase (macro F2, F2m; 3 fold-split seeds or nested threshold; not the leaderboard metric).}\label{tab:t1-compare}
+\begin{tabular}{@{}L{.50\linewidth}L{.16\linewidth}L{.24\linewidth}@{}}
+\toprule
+\textbf{Model} & \textbf{F2m} & \textbf{Other} \\
+\midrule
+HistGradientBoosting & 0.7807 & --- \\
+Optuna \citep{optuna} XGBoost + LightGBM + CatBoost pipeline & 0.7804 & AUC 0.8925 \\
+TabPFN & 0.7799 & --- \\
+HistGradientBoosting + TabPFN (average) & 0.7825 & --- \\
+Explainable boosting machine & 0.7786 & --- \\
+MLP from scratch (piecewise-linear encoding) & 0.772 & AUC 0.885 \\
+Mixture naive Bayes (EM, 1--12 components) & 0.743--0.763 & AUC 0.87 \\
+Blends LGB + XGB + Cat; LGB + MLP + NB & within noise & MLP weight 0.08, NB 0.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \paragraph{Decision log.} Figure~\ref{fig:t1-decision-log} summarizes every experiment we kept, dropped or excluded for rule reasons; the underlying rows are in \texttt{data/decision\_log\_t1.csv}.
 
 \begin{figure}[p]
@@ -236,7 +256,25 @@ The final blend improves OOF ROC-AUC by 0.00019 over Model A (Table~\ref{tab:t1-
 
 Figure~\ref{fig:t1-masking} shows that masking helps mostly where information is scarce: the more signal features a row is missing, the larger the gain, which matches the reason we trained on masked copies. The overall effect is small (OOF AUC 0.89403 to 0.89446). These ablation numbers come from a re-run on different hardware, so small differences from the submitted notebook's scores are expected.
 
-\paragraph{Where errors can concentrate.} The overlap in Figure~\ref{fig:t1-ranges} identifies feature ranges worth examining for classification errors. The reported results are aggregate scores. To determine where errors are concentrated, we would need to count false positives and false negatives by feature range and missingness pattern.
+\paragraph{Where the errors concentrate.} We scored the final out-of-fold predictions separately for rows with and without missing values in four informative features (Figure~\ref{fig:t1-missauc}). Rows with all four present reach OOF ROC-AUC 0.922. Rows missing \feat{reports_received}, \feat{friend_network_size}, \feat{account_age_days} or \feat{crosshair_placement} fall to 0.856--0.864, and rows missing two or more of them to 0.831. Research-phase runs of a single LightGBM found the same pattern (0.854--0.863 on these rows against about 0.90 elsewhere). The error is therefore concentrated in incomplete rows, where less evidence is available. Because missingness does not depend on the label (Figure~\ref{fig:t1-missing}; missing completely at random, \citealp{mcar}), these rows are not harder cases of cheating, they simply carry fewer clues. This is the reason for the masking augmentation, and it matches the gain in Figure~\ref{fig:t1-masking} growing with the number of missing values.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{fig_t1_missing_auc.png}
+\caption{OOF ROC-AUC of the final LightGBM (average of three split seeds, 90,816 labeled rows) by missingness group; the dotted line is the all-row AUC. Takeaway: each missing key feature costs about 0.06 AUC and two or more cost about 0.09. The groups overlap, so the bars are not additive.}
+\label{fig:t1-missauc}
+\end{figure}
+
+\paragraph{How far can the score go?} Three measurements say that the data, not the model, limits the score (Figure~\ref{fig:t1-ceiling}). First, a learning curve of LightGBM on 10--100\% of each fold's training rows gains only 0.0015 macro F2 over the last 1.4-fold increase in data, and a power-law fit gives an asymptote of 0.7833 macro F2 and 0.8939 AUC for unlimited data. The research-phase final ensemble (0.7828 macro F2, 0.8948 AUC) already sits on that asymptote, so more data, capacity or tuning cannot reach 0.79. Second, the class-exclusive value ranges of Figure~\ref{fig:t1-ranges} cover 34.2\% of the labeled rows (31,055), and the model classifies every one of them correctly; forcing hard overrides there changed nothing. The other 59,761 rows form an overlap core with a cheater rate of 0.419, where the model reaches AUC 0.773. Reaching 0.79 macro F2 would need about 6\% fewer mis-ordered pairs inside that core (AUC 0.786). Third, a search for a second hidden identity predicted each of the 31 columns from the others and found only the known $\mathrm{lps}=\mathrm{level}\cdot r/\mathrm{age}$ relation (held-out $R^2$ 0.79 for age and 0.73 for \feat{level_progression_speed}); every other column has $R^2 \le 0.5$.
+
+A later analysis of the generator explains the shape of the core. The data look like uniform boxes per sub-population (for example legitimate new accounts with age 1--110 days, friends 0--49 and reports 10--29, against cheater accounts aged 15--180 or 200--1000 days) plus near-Gaussian skill features. Cheaters are slightly \emph{worse} than legitimate players on every skill feature (0.08--0.24 standard deviations), not better. Inside one overlap cell (6,006 complete rows) linear discriminant analysis, quadratic discriminant analysis and a quadratic logistic regression reach AUC 0.619, 0.606 and 0.615: the classes differ by a pure mean shift, with no covariance or mixture structure that a more flexible model could use. The gradient-boosted model reaches 0.699 in the same cell because the step-shaped distributions of reports and friends still carry information. Adding cross-fitted linear skill logits as features raised AUC by 0.0003 and changed F2 by $\pm 0.0001$, so the trees already use the linear part.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t1_ceiling.png}
+\caption{Learning curve of LightGBM on 10--100\% of the training rows of each fold (mean of three seeds, nested threshold for F2) with a power-law fit. Takeaway: both curves flatten near the asymptote (macro F2 0.7833, AUC 0.8939), so the score is limited by the information in the features.}
+\label{fig:t1-ceiling}
+\end{figure}
 
 \paragraph{Takeaways.} (i) The values near 0.5 in Figure~\ref{fig:t1-signal} indicate weak ranking performance for a feature on its own; model comparisons are needed to assess whether it adds information in combination with other features. (ii) Masking (Figure~\ref{fig:t1-missing}) and bound-based estimation (Figure~\ref{fig:t1-bounds}) are different tools: masking teaches the model to cope with missing values, while the bounds estimate a missing age or level when the other two values are known. (iii) The relationship in Figure~\ref{fig:t1-bounds} lets the model use two observed account features to constrain a third when it is missing.
 
@@ -246,7 +284,26 @@ Figure~\ref{fig:t1-masking} shows that masking helps mostly where information is
 
 \paragraph{Cut chosen from test ranks (rule issue).} Our earlier submissions flagged the top 60\% of the \emph{test} scores. The TA ruled on 16 November that every prediction parameter (prior, threshold, scaler) must be computable without seeing the test set. We replaced it with a fixed threshold fitted on OOF scores: each model's test scores are mapped through its own OOF ECDF and the cut is the OOF binary-F2 optimum (0.37264), which flags 59.8\% of the test accounts. The change moved only about 176 accounts, all near the cut.
 
-\paragraph{Experiments that did not help.} Pseudo-labels on the 13,184 unlabeled training rows gave $-0.00008$ on the public leaderboard (soft weights) and $-0.00006$ (hard labels), although plain cross-validation had suggested $+0.00041$. A non-negative logit stack scored $0.00041$ below the rank blend in nested CV. Thirteen seeds instead of three changed nested binary F2 from 0.83919 to 0.83927, which is noise. Cross-fitted linear skill logits added $+0.0003$ AUC but no F2 gain. TabPFN was estimated to add $+0.00016$ and was not adopted. All rows are in the decision log (Figure~\ref{fig:t1-decision-log}).
+\paragraph{Experiments that did not help.} Pseudo-labels on the 13,184 unlabeled training rows gave $-0.00008$ on the public leaderboard (soft weights) and $-0.00006$ (hard labels), although plain cross-validation had suggested $+0.00041$. A non-negative logit stack scored $0.00041$ below the rank blend in nested CV. Thirteen seeds instead of three changed nested binary F2 from 0.83919 to 0.83927, which is noise. Cross-fitted linear skill logits added $+0.0003$ AUC but no F2 gain. TabPFN \citep{tabpfn} was run standalone (F2m 0.7799) and averaged with HistGradientBoosting it reached 0.7825; only adding it to the final blend was not run (estimated $+0.00016$ on the leaderboard, not worth a token-gated run). All rows are in the decision log (Figure~\ref{fig:t1-decision-log}).
+
+\paragraph{Research-phase experiments that failed.} Table~\ref{tab:t1-failed} lists the ideas tested during the research phase. All numbers are nested-threshold scores from three fold-split seeds unless noted, measured against the same LightGBM without the change; they are macro F2 (F2m) or binary F2 as labelled, not leaderboard scores.
+
+\begin{table}[H]\centering\small
+\caption{Failed research-phase experiments (differences against the matching baseline).}\label{tab:t1-failed}
+\begin{tabular}{@{}L{.27\linewidth}L{.33\linewidth}L{.32\linewidth}@{}}
+\toprule
+\textbf{Idea} & \textbf{Result} & \textbf{Why it did not help} \\
+\midrule
+Label-free LightGBM imputers for missing reports, friends, crosshair, age, level & AUC 0.89306 vs 0.89315 & Imputed crosshair predicts the label (AUC 0.77) only by proxying class from columns the model already sees. \\
+Out-of-fold kNN target-rate features & F2m 0.7799 / 0.7795 vs 0.7811 & kNN alone reaches AUC 0.795 and adds noise. \\
+Confident-learning noise removal \citep{noisylabels}: drop 2\% / 5\% / 10\% of rows & F2m 0.7804 / 0.7792 / 0.7763 vs 0.7811 & Only 0.12\% of rows contradict a confident prediction; the hard rows are genuine class overlap, so removing them makes the core over-confident. \\
+Binary-F2 training: class weight 3, focal loss \citep{focal}, pAUC early stopping & binary F2 0.83831 / 0.83833 / 0.83746 vs 0.83798 & Within noise or worse; the threshold already handles the F2 trade-off. \\
+Hard overrides in class-exclusive zones & F2m 0.78202 vs 0.78201 & The model already classifies all 31,055 zone rows correctly. \\
+Per-group thresholds or isotonic calibration & F2m 0.7817 / 0.7815 vs 0.7820 & More variance; one cut on a good posterior is already optimal for F-measures. \\
+Masking at twice the observed missing rate & F2m 0.78115 vs 0.78144 & Over-masking is no better than the observed rate. \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{Limitations of the validation.} The reported binary F2 reflects threshold selection and evaluation on the same OOF scores. In addition, Model A's reference statistics and Model C's quantile bin edges were computed before the folds were split, while Model B trained its meta-model on a precomputed set of base OOF scores. A separate holdout would let us evaluate the selected threshold on rows that played no part in choosing it. Alternatively, preprocessing, stacking, and threshold selection could all be fitted within nested cross-validation.
 

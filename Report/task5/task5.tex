@@ -11,7 +11,7 @@ Task 5 asks for an unsupervised detector of anomalous player accounts: account t
 
 Each account has 123 columns: 29 behavioural metrics recorded in four periods (suffixes \texttt{\_1} to \texttt{\_4}, 116 columns, for example \feat{login_count}, \feat{kda_std}, \feat{login_lat}), the static columns \feat{account_age_days} and \feat{behavior_stability}, four security-related flags (\feat{password_changed}, \feat{vpn_usage}, \feat{suspicious_login_time}, \feat{mass_item_sale}), and \feat{player_id}. About 4.84\% of all cells are missing, and \feat{behavior_stability} is missing in 4.86\% of accounts. The organisers re-released the data on 12 November; every number in this section comes from the new release.
 
-\paragraph{Metric.} The score is the binary F3 of the anomaly class, $F_3 = \dfrac{10\,TP}{10\,TP + 9\,FN + FP}$. A missed anomaly costs nine times as much as a false alarm. If we add one account with probability $p$ of being anomalous to the flagged set, the expected $F_3$ rises exactly when $p > F_3/10$. At the scores we reach (about 0.997) this break-even is $p^\ast \approx 10\%$, a much lower bar than for an ordinary classifier; we use it for the final recovery step (Section~\ref{sec:t5-model}). Probes on the public leaderboard showed that Task 5 carries a weight of about 0.2 of the final score: submitting an all-zero Task 5 column cost $-0.177$.
+\paragraph{Metric.} The score is the binary F3 of the anomaly class~\citep{fbeta}, $F_3 = \dfrac{10\,TP}{10\,TP + 9\,FN + FP}$. A missed anomaly costs nine times as much as a false alarm. If we add one account with probability $p$ of being anomalous to the flagged set, the expected $F_3$ rises exactly when $p > F_3/10$. At the scores we reach (about 0.997) this break-even is $p^\ast \approx 10\%$, a much lower bar than for an ordinary classifier; we use it for the final recovery step (Section~\ref{sec:t5-model}). Probes on the public leaderboard showed that Task 5 carries a weight of about 0.2 of the final score: submitting an all-zero Task 5 column cost $-0.177$.
 
 \subsubsection{EDA Findings}
 
@@ -159,6 +159,55 @@ Figure~\ref{fig:t5-gaps} shows that in each feature no account lies inside the g
 
 Figure~\ref{fig:t5-box} repeats, in one picture, the two ideas used above: a joint box that no single feature shows (left) and a companion box in which hidden \feat{lowstab} members have a measurably lower \feat{login_count} (right; the companion intervals hold all 246 visible members when a missing cell counts as compatible).
 
+\paragraph{How the 3-metric box was found: a dependence scan.} The box is the one group that no histogram shows, so it needs its own account of the discovery. Nothing in a single feature points to it; the starting point was the structure of the \emph{normal} accounts. Among the 24,081 accounts outside the five rule-and-gap groups (the 1,808-row union), the four-period means of different features are almost independent: the largest absolute correlation between two features is small (0.026 on the unflagged rows, Remaining structure below; 0.032 on the first release). In a synthetic file, independence among normal accounts is the generator's baseline, so any joint structure left in these accounts must have been injected on purpose. We therefore searched for dependence, not for outliers.
+
+\textbf{Step 1: pairs.} For every pair of features from different metrics (the 24 continuous metrics, their standard deviations across the four periods, the two static features and the four flags) we counted how many accounts fall into the 5\% tail of both, and compared with the count expected under independence, $z=(\text{observed}-\text{expected})/\sqrt{\text{expected}}$. With 5\% tails and 24,081 accounts about $0.05^2\times24{,}081=60$ accounts are expected in a cell. Figure~\ref{fig:t5-pairheat} shows the largest $z$ of each of the 325 feature pairs. One pair stands out: the upper tails of \feat{accuracy_std} and \feat{kda_std} hold 222 accounts against 60 expected ($z=20.9$). The next-best pair reaches $z=4.4$ (\feat{kda_std} and the variability of \feat{performance_stability}, which is the same hidden cluster seen through its third metric), and no other pair is above that. (On the first release the same test gave the same 222 against 60, $z=20.9$, and a next-best $z=3.7$.)
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\linewidth]{fig_t5_pairheat.png}
+\caption{Step 1 of the box discovery (12 November release). Each cell is the largest 5\%-tail co-occurrence $z$ of a pair of features from different metrics (over mean or standard deviation and over upper or lower tails), computed on the 24,081 accounts outside the union; the colour scale is clipped at 8. The two pink squares are the single pair that stands out, \feat{accuracy_std} and \feat{kda_std} ($z=20.9$); every other cell is below 4.4.}
+\label{fig:t5-pairheat}
+\end{figure}
+
+\textbf{Step 2: triples.} Two features cannot define a three-metric group, so we extended the test to every triple of the 26 per-account features (24 four-period means and the two static features, 2,600 triples): rank each feature, cut it into 8 equal-count bins, and take the $z$ of the fullest of the $8^3=512$ cells against its expected count. Figure~\ref{fig:t5-triplescan} shows the distribution of these 2,600 values together with the winner. The bulk of the triples has a median $z$ of 3.1 (the maximum of 512 cells is always a few standard deviations above the expectation); the triple (\feat{accuracy_std}, \feat{kda_std}, \feat{performance_stability}) has $z=17.2$, with 165 accounts in one cell against 47 expected, and the next-best triple (\feat{accuracy_std}, \feat{kda_mean}, \feat{kda_std}) reaches 7.4, again through the same pair. Twenty-four of the 2,600 triples contain the pair, and \feat{performance_stability} is the third metric that lifts it highest. On the first release the same scan gave $z=19.8$ against a median of 3.2; the smaller number here comes from the different accounts and cell edges of the new file, not from a different picture.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t5_triplescan.png}
+\caption{Step 2 of the box discovery (12 November release): grid-scan $z$ of the 2,600 feature triples on the accounts outside the union (log counts). The bulk sits at a median of 3.1 (dashed); the winning triple (pink) is at 17.2, far outside it.}
+\label{fig:t5-triplescan}
+\end{figure}
+
+\textbf{What we saw and what we decided.} The dependence scan isolates a single cluster, and it names the three metrics before any interval is known. Given the triple, the next step is to look inside it: the members sit in a tight corner of each two-dimensional projection (Figure~\ref{fig:t5-acckda}, panels d to f), their per-period values are all in a narrow interval of each metric, and their variability across periods is about half that of normal accounts at the same level (period standard deviation of \feat{performance_stability} 0.025 against 0.044 on the first release, a value we have not recomputed). Those per-period intervals define the box. The rest of the discovery was to establish that the box is exact, which is the next paragraph. Other methods agree about where to look but not about where to cut: on the first release an Isolation Forest~\citep{isolationforest} scored the shock groups with an AUC near 1 but was blind to a dependence-only cluster, and a Gaussian mixture or density clustering of all 28 dimensions does not isolate the box either (see the negative scans below).
+
+\paragraph{Why the box is precise.} The box is not a fitted region: its edges are the generator's. Over the 244 accounts the per-period values of \feat{performance_stability} lie in $[0.8502,0.9497]$, of \feat{kda_std} in $[0.7009,0.9999]$ and of \feat{accuracy_std} in $[9.0071,11.9979]$ (first release: $[0.8502,0.9498]$, $[0.7001,1.0000]$ and $[9.0008,11.9975]$). The extremes sit on the round numbers $0.85$ to $0.95$, $0.70$ to $1.00$ and $9$ to $12$, as for a uniform draw on a round interval, and the spread of a $U(0.85,0.95)$ variable (standard deviation 0.029) matches the low period-to-period noise we measured for the metric. Normal accounts also pass through all three intervals, on both sides, which is why a one-dimensional cut cannot find the group.
+
+Two checks show that the box contains almost only members. First, a chance model. For each metric, we take among the normal accounts the number of period values that fall outside the box interval (0 to 4, which keeps the within-metric correlation between periods), and convolve the three distributions as if the metrics were independent. Table~\ref{tab:t5-boxnull} compares this with what we observe over the 24,081 accounts outside the union: the chance model expects 0.95 accounts with every observed value inside, we see 244, so at most about $0.95/244\approx0.4\%$ of the box can be normal accounts (a precision of about 99.6\%; 99.7\% on the first release, where the null expected 0.85). The accounts with one, two or three out-of-box values match the null (6 against 7.8, 32 against 32.1, 90 against 96.0), so there are no near-misses with some members just outside the box.
+
+\begin{table}[H]\centering\small
+\caption{Rows outside the union by the number of observed period values outside the box (summed over the three metrics), against a chance model that keeps the within-metric period correlation and treats the metrics as independent. 12 November release.}\label{tab:t5-boxnull}
+\begin{tabular}{@{}rrr@{}}
+\toprule
+\textbf{Out-of-box values} & \textbf{Observed rows} & \textbf{Expected by chance} \\
+\midrule
+0 (the box) & 244 & 0.95 \\
+1 & 6 & 7.8 \\
+2 & 32 & 32.1 \\
+3 & 90 & 96.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Second, a sensitivity check (Figure~\ref{fig:t5-boxsens}). We shrink or widen the intervals around their centres and count the accounts inside. Narrowing one interval by 10\% removes 81 to 87 accounts (157 to 163 remain; 152 to 171 on the first release), and narrowing all three by 10\% removes 174 (70 remain). Widening any interval by 10\% adds nothing, and widening all three by 30\% adds only 5 accounts. The count is flat above 100\% and falls steeply below it, which is the signature of a box whose edges are the real edges: a bound we placed inside the true region loses members, and a bound outside gains almost no one.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t5_boxsens.png}
+\caption{Sensitivity of the box (12 November release): accounts outside the union that lie inside the three intervals when one interval (black, blue or amber line) or all three (pink) are scaled around their centres. The count is flat for any widening and drops sharply for any narrowing, so the edges are the true edges.}
+\label{fig:t5-boxsens}
+\end{figure}
+
 \paragraph{How the groups fit together.} Figure~\ref{fig:t5-overlap} counts how many accounts each detector flags and how the detectors overlap on the final 2,104-row file.
 
 \begin{figure}[H]
@@ -188,6 +237,27 @@ The picture is more regular than a set of independent detectors would give. The 
 
 For 35 of the 60 features the widest gap isolates members of a known group (Figure~\ref{fig:t5-gapscan}): the 4 cluster features, the bot cluster again in several other features, and the shock group in many standard deviations of the metrics that shock. The other 25 have gaps of at most 2.3 robust standard deviations, and only four of them exceed 0.25 (the mean and the standard deviation of \feat{refund_count} and of \feat{device_count}, which are small integers). The standard deviation of four small integer counts takes few distinct values, which leaves holes in its tail, so these are lattice effects of the feature and not clusters. We therefore found no further isolated group in any single feature.
 
+\paragraph{Exhaustive scans for further groups.} The gap scan looks at one feature at a time. We also repeated the dependence idea of the box on larger families of joint regions, always on the accounts left unflagged (and, for calibration, with a known group put back, to show that a group of that size would have been seen). Table~\ref{tab:t5-negscans} lists each scan with the value recomputed on the 12 November file and the value from the first release's notes. None finds a second box.
+
+\begin{table}[H]\centering\small
+\caption{Negative scans on the unflagged accounts. ``New'' is recomputed on the 12 November file with \texttt{gen\_figs\_t5.py} (values in \texttt{data/t5\_scan\_summary.csv}); ``first'' is from the research notes on the first release (``not recomputed'' where we have no new value). A $z$ inside the null range means no structure; the calibration values show that a known group would have been found.}\label{tab:t5-negscans}
+\begin{tabular}{@{}L{.27\linewidth}L{.31\linewidth}L{.34\linewidth}@{}}
+\toprule
+\textbf{Scan} & \textbf{New (12 Nov file)} & \textbf{First release} \\
+\midrule
+Box pairs: ``all four periods in $[a,b]$'' on a 13-point grid per metric, every cross-metric pair & top $z=4.5$ over 710,046 valid pairs of 1,334 indicators; calibration with all rows: $z=64.5$ (a bot-type pair) & top $z=4.5$ over 1.04M pairs; calibration: bot at $z=126$ \\
+Four features at once: all 14,950 combinations of 26 features, $5^4$ rank cells & top $z=5.9$ (\feat{friend_removes}, \feat{kda_std}, \feat{account_age_days}, \feat{behavior_stability}), column-shuffled nulls 5.8 and 5.7; box put back: $z=11.7$ & top $z=6.27$, nulls 5.5 to 6.6; box put back: $z=9.9$ \\
+$20\times20$ rank grids on every cross-metric pair of 263 derived features (22,789 pairs) & not recomputed & top $z=5.5$, the maximum expected under the null \\
+Geographic hotspots: densest $0.5^\circ$ cell of the home position & 4 accounts & 5 accounts \\
+Gaussian mixture (BIC)~\citep{gmm_bic} on 28 dimensions & not recomputed & behaves like the column-shuffled data; box rows not isolated \\
+HDBSCAN~\citep{hdbscan} on the means & no cluster on 6,000 normal accounts, nor on the column-shuffled copy & only extra cluster is the \feat{friend_removes}$=0$ clipping spike (3,877 rows); box rows not isolated \\
+t-SNE~\citep{tsne} of 56 features & not recomputed & bot, takeover, selling and VPN are separate islands; the box is a dense patch at the edge; low activity, low communication and low stability dissolve in the bulk \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three things are worth taking from Table~\ref{tab:t5-negscans}. First, the box-pair and four-feature scans pass their calibration: with a known group put back, the same scan jumps from the null range to $z=11.7$ (the 244-account box) or $z=64.5$ (the bot cluster), so a further group of 200 or more accounts defined by a handful of features would have shown up. Second, the largest value in each scan is inside the range of the column-shuffled null (5.9 against 5.7 and 5.8 for four features), which is what extreme-value statistics predicts for thousands of combinations of independent features; the value alone is not evidence of a group. Third, full-dimensional clustering is the weak instrument: on the first release HDBSCAN and a Gaussian mixture did not isolate the 244-account box even though it is certain, because the box differs from the rest in three of 28 dimensions. A smooth, featureless picture in a t-SNE map is therefore not a proof that nothing is hidden, and we relied on the low-dimensional scans, which pass their calibration, instead.
+
 \paragraph{Remaining structure.} A local analysis of the new file (not part of the submission notebook) found that the median $|r|$ between feature pairs is 0.0049 with a maximum of 0.24 over all accounts, but 0.0044 and 0.026 for the 23,785 accounts that are not flagged. The correlation in the full file therefore came from the anomalies, and the normal accounts are close to independent, which is why we expect nothing structured to be left for a further detector. The same analysis counts 18 anomalies hidden behind missing cells, which is the target of the recovery step below.
 
 \subsubsection{Data Preprocessing}
@@ -204,7 +274,9 @@ Figure~\ref{fig:t5-lowcomm}. Low communication, many new friends; gap 0.09 to 0.
 Figure~\ref{fig:t5-lowstab}. Low stability; gap 0.40 to 0.70; 4.86\% of values missing & Cut \feat{behavior_stability} $<0.55$ (246) and a recovery step for the missing values. \\
 Figure~\ref{fig:t5-lsnan} (and the right panel of Figure~\ref{fig:t5-box}). Hidden members have a lower \feat{login_count} inside their companion box; the number flagged changes slowly with the prior & Bayesian posterior for accounts with missing \feat{behavior_stability}, flagged above $p>0.10$ (the break-even of $F_3$), prior 14. \\
 Figure~\ref{fig:t5-acckda} (and the left panel of Figure~\ref{fig:t5-box}). A seventh type hides in a joint box of three metrics at all four periods; no normal account is inside & Box detector on \feat{performance_stability}, \feat{kda_std} and \feat{accuracy_std} (244 accounts). \\
-Figures~\ref{fig:t5-overlap} and~\ref{fig:t5-gapscan}. Detectors do not overlap except inside the rule; no other isolated cluster in 60 features & The union is the sum of the groups (1,808); no further detector is added. \\
+Figures~\ref{fig:t5-pairheat} and~\ref{fig:t5-triplescan}. Among normal accounts features are independent, and one pair (\feat{accuracy_std}, \feat{kda_std}, $z=20.9$) and one triple (adding \feat{performance_stability}, $z=17.2$ against a median of 3.1) break it & Search for a joint box on these three metrics. \\
+Table~\ref{tab:t5-boxnull} and Figure~\ref{fig:t5-boxsens}. Box edges equal the round generator bounds; chance expects 0.95 rows against 244; narrowing loses rows, widening adds none & Use the generator-like intervals; no near-miss recovery step is needed. \\
+Figures~\ref{fig:t5-overlap} and~\ref{fig:t5-gapscan}, Table~\ref{tab:t5-negscans}. Detectors do not overlap except inside the rule; no other isolated cluster in 60 features, and no second box in the pair, four-feature and rank-grid scans & The union is the sum of the groups (1,808); no further detector is added. \\
 \end{evidencetable}
 
 \paragraph{Features.} Four summaries are used. (i) The \emph{home position} is the mean of the period-1 and period-2 login coordinates. (ii) The \emph{period change} of a metric is the largest absolute difference between its period-3/4 values and the mean of its period-1/2 values; its robust $z$-score uses the median and $1.4826\times$MAD of the change over all accounts. (iii) The \emph{four-period mean} of a metric detects stationary clusters. (iv) The four-period mean of \feat{login_count} and the period-wise standard deviation of \feat{purchase_frequency} feed the recovery step.
@@ -336,9 +408,9 @@ Leaderboard effect of the last tested changes & between $-0.00025$ and $+0.00002
 \toprule
 \textbf{Method} & \textbf{Data} & \textbf{Result} \\
 \midrule
-Isolation Forest (500 trees, top 2,104) & new & takeover 99.4\%; selling, VPN and bot 100\%; lowact 12.8\%, lowcomm 17.9\%, lowstab 31.7\%, 3-metric box 10.2\%, hidden 0\%; 888 flagged accounts (42.2\%) outside the final set \\
-Temporal masked autoencoder (3-layer Transformer, top 2,104) & new & takeover 55.2\%, selling 6.1\%, VPN 32.8\%, bot 5.8\%, stationary groups 5.3\% to 10.2\%, hidden 15.4\%; 1,743 accounts (82.8\%) outside the final set \\
-One-class SVM, Mahalanobis distance, PCA reconstruction, Gaussian mixture, LOF & first & AUC 0.86, 0.87, 0.80, 0.80 and 0.52 \\
+Isolation Forest~\citep{isolationforest} (500 trees, top 2,104) & new & takeover 99.4\%; selling, VPN and bot 100\%; lowact 12.8\%, lowcomm 17.9\%, lowstab 31.7\%, 3-metric box 10.2\%, hidden 0\%; 888 flagged accounts (42.2\%) outside the final set \\
+Temporal masked autoencoder~\citep{mae} (3-layer Transformer, top 2,104) & new & takeover 55.2\%, selling 6.1\%, VPN 32.8\%, bot 5.8\%, stationary groups 5.3\% to 10.2\%, hidden 15.4\%; 1,743 accounts (82.8\%) outside the final set \\
+One-class SVM, Mahalanobis distance, PCA reconstruction, Gaussian mixture~\citep{gmm_bic}, LOF~\citep{lof} & first & AUC 0.86, 0.87, 0.80, 0.80 and 0.52 \\
 \bottomrule
 \end{tabular}
 \end{table}

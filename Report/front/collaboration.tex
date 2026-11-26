@@ -23,9 +23,9 @@
 
 \paragraph{Key takeaways from teamwork.}
 \begin{itemize}[leftmargin=*,itemsep=2pt]
-\item \textbf{Coordinate scarce compute.} GPU quota is per account, and some notebooks need credentials that only a UI session has (for example gated DINOv3 weights). Agreeing who runs which job avoided idle sessions and duplicated runs.
-\item \textbf{Keep one canonical log.} A single running file with every submission, its change and its score let any teammate see what had been tried and prevented repeating failed experiments.
-\item \textbf{Change one thing per leaderboard probe.} Each probe changed exactly one task column, so the score difference could be attributed to that change. This is also how we measured the weight of each task.
-\item \textbf{Route rule questions through one person.} One channel to the TA kept the questions precise and the answers consistent, and the team could check every file against the same ruling.
-\item \textbf{Write down failures.} Dropped experiments (the failed-experiment section of each task) saved time later and are part of the result.
+\item \textbf{Share scarce compute across accounts.} GPU quota is per account, and some notebooks need credentials that only a UI session has (for example gated DINOv3 weights, which a command-line push cannot read). Agreeing who runs which job, and handing results over as files in a fixed folder layout, avoided idle sessions and duplicated runs.
+\item \textbf{Treat data re-releases and row order as a risk.} On 12 November the organisers re-released the Task 2, 4 and 5 data. Our Task 4 predictions had been written in the old test order, and the first submissions on the new file scored at chance until we re-aligned every prediction by file name. We now key every prediction file by an id or file name and check it in \texttt{combine\_submission.py}, never by row position alone.
+\item \textbf{Route rule questions through one person to the TA.} One channel kept the questions precise and the answers consistent. The rulings of 15 and 16 November changed the design (no test-based prior, no test-rank threshold), and the team could check every candidate file against the same text.
+\item \textbf{Change one thing per leaderboard submission.} Each probe changed exactly one task column and had its expected effect written down first, so a score difference could be attributed to that change. The same discipline showed which late changes were below the leaderboard's resolution.
+\item \textbf{Keep one canonical log.} A single running file with every submission, its change and its score let any teammate see what had been tried and prevented repeating failed experiments; the failed experiments in each task section are part of the result.
 \end{itemize}

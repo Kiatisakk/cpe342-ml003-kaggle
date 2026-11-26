@@ -1,0 +1,11 @@
+stage,family,oof_nmae,submitted,source,note
+HGB two-stage hurdle,baseline,0.7843,yes,t3/research/REPORT.md milestones; submissions/history/sub_v6_README.md,Submitted in sub_v1 and sub_v2
+Hurdle-ZILN v1 (XGB log-normal head),ziln,0.7893,no,CLAUDE.md notebook table (task3-hurdle-ziln v1) and v2 script comment 'v1 reference: C_ziln_tuned 0.7893',First ZILN stage; log-normal quantile with tuned scale and p-shift
+Hurdle-ZILN v2 (+ exact fill + segment imputer),ziln,0.7916,no,task3_hurdle_ziln_v3.py header ('v2 OOF 0.7916'),Blend of A/C/whale/D heads
+Hurdle-ZILN v3 (+ LightGBM + multi-quantile),ziln,0.7917,no,task3_hurdle_ziln_v4.py header ('v3 OOF 0.7917'),Plateau; capacity is not the bottleneck
+Hurdle v4 (XGB multi-quantile blend),ziln,0.7920,component,t3/preds/v4/preds/t3_ziln_v4_summary.json (E_blend 0.79195),Weights tuned in-sample; nested LAD blend gives 0.79191
+NN-ZILN K=1 (single log-normal),ziln,0.7867,no,t3/preds/nn_ziln/preds/t3_nn_summary.json (NN_K1 0.78671),Plain ZILN loss
+NN-ZILN K=3 (mixture of 3 log-normals),ziln,0.7901,component,t3/preds/nn_ziln/preds/t3_nn_summary.json (NN_K3 0.79014),Component of the submitted blend (weight 0.32)
+v4 + NN-ZILN K3 blend,ziln,0.7925,yes,CLAUDE.md section 3 and submissions/history/sub_v6_README.md,Weights tuned in-sample (D_q .38; D_qw0.3 .24; D_qw0.6 .06; NN_K3 .32); inside sub_v5 and sub_v6
+CatBoost depth-4 offset multi-quantile (1 seed),catboost,0.79505,no,local pipeline REPORT (E30),Replaces the ZILN stack
+CatBoost + LightGBM final (10x10 seeds),catboost,0.79535,yes,task3.ipynb output,Final; the 10-seed bag is in sub_v24a

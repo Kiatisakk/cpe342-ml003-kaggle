@@ -1,0 +1,11 @@
+fraction_of_fold_train,n_train,model,macro_f1_mean,sd_3_seeds,data_release,source
+0.10,8320,NB,0.7460,0.0004,first,t2/research/logs/e11.log (E11)
+0.10,8320,EM-NB,0.7472,0.0006,first,t2/research/logs/e11.log (E11)
+0.25,20800,NB,0.7518,0.0005,first,t2/research/logs/e11.log (E11)
+0.25,20800,EM-NB,0.7525,0.0003,first,t2/research/logs/e11.log (E11)
+0.50,41600,NB,0.7539,0.0006,first,t2/research/logs/e11.log (E11)
+0.50,41600,EM-NB,0.7541,0.0005,first,t2/research/logs/e11.log (E11)
+0.75,62400,NB,0.7550,0.0007,first,t2/research/logs/e11.log (E11)
+0.75,62400,EM-NB,0.7555,0.0003,first,t2/research/logs/e11.log (E11)
+1.00,83200,NB,0.7557,0.0004,first,t2/research/logs/e11.log (E11)
+1.00,83200,EM-NB,0.7557,0.0004,first,t2/research/logs/e11.log (E11)
