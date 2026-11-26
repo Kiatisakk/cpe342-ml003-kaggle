@@ -1,0 +1,49 @@
+\documentclass[../main.tex]{subfiles}
+\begin{document}
+\graphicspath{{figures/}{task4/figures/}}
+
+\subsection{Task 4: Game Title Detection (macro F1)}
+\label{sec:t4}
+
+\subsubsection{Problem and Data}
+\todo{Task, target, metric, train/test sizes, key columns (short).}
+
+\subsubsection{EDA Findings}
+\todo{Two to five EDA figures; each followed by what we see and what we decided.}
+
+\placeholderfigure{fig:t4-eda1}{\todo{caption: what it shows and one-line takeaway}}%
+{EDA figure 1 for task 4}{a preprocessing or modelling decision (see Table~\ref{tab:t4-evidence})}
+
+\placeholderfigure{fig:t4-eda2}{\todo{caption: what it shows and one-line takeaway}}%
+{EDA figure 2 for task 4}{a preprocessing or modelling decision (see Table~\ref{tab:t4-evidence})}
+
+\subsubsection{Data Preprocessing}
+\todo{Cleaning, imputation, exact identities, feature engineering; reference every EDA figure.}
+
+\begin{evidencetable}{EDA evidence and the pipeline decision it motivated (task 4).}{tab:t4-evidence}
+Figure~\ref{fig:t4-eda1} \todo{finding} & \todo{decision} \\
+Figure~\ref{fig:t4-eda2} \todo{finding} & \todo{decision} \\
+\end{evidencetable}
+
+\subsubsection{Model Design}
+\todo{Model family, objective, validation scheme, hyper-parameters; one TikZ pipeline diagram using the stage/model/decision/flow/note styles.}
+
+\placeholderfigure{fig:t4-pipeline}{\todo{caption: pipeline from raw data to submission}}%
+{TikZ pipeline diagram for task 4}{why each stage exists}
+
+\subsubsection{Evaluation and Results}
+\todo{Metric definition, OOF/CV numbers, public LB, results table; link to the decision log.}
+
+\placeholderfigure{fig:t4-decision-log}{\todo{caption: decision log, kept versus dropped versus rule-excluded}}%
+{decision-log chart generated from data/decision\_log\_t4.csv (figures/decision\_log\_t4.pdf)}{which experiments were kept, dropped or excluded by the rules}
+
+\subsubsection{Insights from Model Behaviour}
+\todo{What the model learned, where it fails, error budget, behaviour on shifted data.}
+
+\subsubsection{Common Mistakes and Failed Experiments}
+\todo{Failed experiments with numbers, rule-related lessons (TA ruling), what replaced them.}
+
+\subsubsection{Domain Interpretation and Business Impact}
+\todo{What the result means for the game operator (decisions, cost of errors, deployment caveats).}
+
+\end{document}

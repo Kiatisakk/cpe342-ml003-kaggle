@@ -1,0 +1,32 @@
+% Shared preamble. Do not edit in wave 2 (request changes instead).
+\usepackage[a4paper,left=25mm,right=25mm,top=22mm,bottom=22mm]{geometry}
+\usepackage{fontspec}
+\IfFontExistsTF{Latin Modern Roman}{\setmainfont{Latin Modern Roman}}{\setmainfont{Times New Roman}}
+\IfFontExistsTF{Latin Modern Mono}{\setmonofont{Latin Modern Mono}[Scale=MatchLowercase]}{\setmonofont{Consolas}[Scale=MatchLowercase]}
+\usepackage{graphicx,booktabs,longtable,array,float,enumitem,xstring}
+\usepackage{amsmath}
+\usepackage[table]{xcolor}
+\usepackage{siunitx}
+\usepackage[font=small,labelfont=bf,labelsep=period]{caption}
+\usepackage{subcaption}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,calc,shapes.geometric,shapes.misc,backgrounds}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{pdftitle={Karena Player Intelligence System: Technical Report},pdfauthor={Team ML003}}
+\setlength{\parindent}{1.35em}
+\setlength{\parskip}{2pt}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.22}
+\setlength{\emergencystretch}{2em}
+\setlength{\abovecaptionskip}{5pt}
+\setlength{\belowcaptionskip}{2pt}
+\captionsetup[table]{position=above}
+\captionsetup[figure]{position=below}
+\setlist{itemsep=1pt,topsep=3pt}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\input{\rootdir macros}

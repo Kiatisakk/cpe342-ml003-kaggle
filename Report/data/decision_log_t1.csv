@@ -1,0 +1,14 @@
+experiment,metric,delta,status,source,note
+Binary-F2 cut (about 63%) instead of macro-F2 cut (40%),LB public,0.0128,kept,CLAUDE.md LB log (probe_v10e),Isolated probe: LB metric is F2 of the positive class
+Rank blend 0.7/0.2/0.1 (final_v2 / stack / GBM) in the submission,LB public,0.00018,kept,CLAUDE.md LB log (sub_v21a vs v16a),Predicted +0.00017
+Rank blend 0.7/0.2/0.1 vs single model,nested CV F2,0.00068,kept,CLAUDE.md LB log (sub_v20a),14 of 15 folds improved
+Masking augmentation (4 copies),OOF ROC-AUC (seed 42),0.00043,kept,report/figures/t1 fig_t1_lps_identity,0.89403 to 0.89446; gain concentrates on rows with 4+ missing values
+Pseudo-labels on unlabeled train rows (soft weight 0.5),LB public,-0.00008,dropped,CLAUDE.md LB log (sub_v22a),CV +0.00041 plain but -0.00006 test-weighted
+Pseudo-labels hard (conf >=0.8 / <=0.05),LB public,-0.00006,dropped,CLAUDE.md LB log (sub_v22b),
+Cut at 61% instead of 60%,LB public,-0.00016,dropped,CLAUDE.md LB log (sub_v20c),Cut is flat around 60%
+Cut p>=0.20 (59.2%) instead of 60%,LB public,-0.00003,dropped,CLAUDE.md LB log (sub_v19b),Flat
+Non-negative logit stack instead of rank blend,nested CV F2,-0.00041,dropped,CLAUDE.md (report techniques 10 Nov),Stack +0.00039 vs argmax baseline but 0.00041 below the rank blend
+13 seeds instead of 3 for final_v2,nested CV binary F2,0.00008,dropped,CLAUDE.md (12 Nov),0.83927 vs 0.83919: noise
+Cross-fitted linear skill logits as features,nested CV F2,0.0001,dropped,CLAUDE.md (insight hunt 16 Nov),AUC +0.0003 and F2 +-0.0001: noise
+TabPFN added to the blend,estimate LB,0.00016,dropped,CLAUDE.md (15 Nov review),Estimate only; needs a UI run with a token; not run
+Cut chosen from test score ranks (top-60% of test),not applicable,,rule_excluded,CLAUDE.md (TA answer 16 Nov),Replaced by a fixed OOF-F2 threshold (every parameter computable without the test set)

@@ -27,3 +27,19 @@ catboost_info/
 *.npz
 *.zip
 .DS_Store
+
+# LaTeX build outputs
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.xdv
+*.bbl
+*.blg
+Report/**/*.pdf
+!Report/**/figures/*.pdf

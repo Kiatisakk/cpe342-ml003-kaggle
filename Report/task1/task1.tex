@@ -1,0 +1,257 @@
+\documentclass[../main.tex]{subfiles}
+\begin{document}
+\graphicspath{{figures/}{task1/figures/}}
+
+\subsection{Task 1: Anti-Cheat Pre-Filter (binary F2)}
+\label{sec:t1}
+
+\subsubsection{Problem and Data}
+
+Task 1 uses gameplay and account features to identify cheaters. The target variable, \feat{is_cheater}, is \texttt{0} for legitimate players and \texttt{1} for cheaters. This is a binary classification problem. The primary metric is \textbf{binary F2} of the positive class, which gives more weight to recall because missing cheaters is a concern. A leaderboard probe confirmed that the public score is the binary F2 of the positive class, not a macro average (Section~\ref{sec:t1-eval}).
+
+The training set contains 104,000 rows, including 90,816 labeled rows and 13,184 unlabeled rows (12.7\%). Among the labeled rows, 34.9\% are cheaters and 65.1\% are legitimate players. The test set contains 25,889 rows. The 31 raw features include gameplay statistics such as \feat{kill_death_ratio} and \feat{reaction_time_ms}, and account characteristics such as \feat{reports_received} and \feat{account_age_days}.
+
+\subsubsection{EDA Findings}
+
+We first checked which rows had labels and how the classes were distributed. We then examined which predictors distinguish the classes and how much information remains when values are missing.
+
+\paragraph{Class balance.} We counted the labeled and unlabeled rows, then compared the two classes within the labeled subset.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{class_balance.png}
+\caption{Label availability (left) and class balance among labeled rows (right).}
+\label{fig:t1-balance}
+\end{figure}
+
+In Figure~\ref{fig:t1-balance}, the left panel shows 13,184 unlabeled training rows (12.7\%). The right panel shows that 34.9\% of the labeled rows are cheaters. We use the labeled rows for supervised training and stratify the folds to preserve that class proportion. Model A also uses unlabeled rows to estimate the distributions of account age and level.
+
+\paragraph{Feature signal.} We evaluated all 31 raw features individually using ROC-AUC. Taking the greater of AUC and $1-\text{AUC}$ captures separation in either direction.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{feature_signal.png}
+\caption{Folded univariate ROC-AUC for the 15 retained and 16 excluded predictors.}
+\label{fig:t1-signal}
+\end{figure}
+
+In Figure~\ref{fig:t1-signal}, \feat{reports_received} and \feat{crosshair_placement} have the highest folded ROC-AUC. The 15 retained predictors range from 0.5106 to 0.6965, while the other 16 cluster near 0.5. This screening step reduces the raw feature set from 31 to 15 before feature engineering.
+
+\paragraph{Missingness.} We compared feature missing rates and measured the cheater rate among rows with and without an observed value.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{missingness.png}
+\caption{Missing rates in train and test (left) and cheater rates with and without observed values (right).}
+\label{fig:t1-missing}
+\end{figure}
+
+In the left panel of Figure~\ref{fig:t1-missing}, \feat{reports_received} and \feat{friend_network_size} are each missing in about 22\% of labeled training rows. Both have lower missing rates in test. In the right panel, the cheater rate for \feat{reports_received} is close to 35\% whether the value is missing or observed. This comparison alone cannot establish that values are missing completely at random (MCAR). Model A uses missing indicators and masks additional values during training so it can learn from incomplete records.
+
+\paragraph{Class-exclusive ranges.} We compared the distributions of \feat{reports_received}, \feat{crosshair_placement}, \feat{level}, and \feat{account_age_days} by class.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=.89\linewidth,height=0.35\textheight,keepaspectratio]{behavioral_ranges.png}
+\caption{Feature distributions by class, with class-exclusive ranges shaded.}
+\label{fig:t1-ranges}
+\end{figure}
+
+The shaded bands in Figure~\ref{fig:t1-ranges} mark ranges where only one class was observed in the training data. For example, \texttt{reports\_received == 4} and \texttt{level < 28} occur among cheaters, while \texttt{reports\_received >= 20} and \texttt{level > 96} occur among legitimate players. The distributions overlap in other ranges. The pipeline captures these patterns with \feat{zone_cheat} and \feat{zone_legit} and groups account ages with \feat{age_segment}.
+
+\paragraph{Algebraic relationship.} For rows with all three values present, we computed $r = \texttt{level\_progression\_speed} \times \texttt{account\_age\_days} / \texttt{level}$ to see whether two observed values could constrain a third missing value.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=.89\linewidth,height=0.35\textheight,keepaspectratio]{age_bounds.png}
+\caption{Distribution of $r$ (left) and bounds for observed account age (right).}
+\label{fig:t1-bounds}
+\end{figure}
+
+The left panel of Figure~\ref{fig:t1-bounds} shows $r$ spread nearly evenly between 0.15 and 1.08. In the right panel, those limits define two lines that bound the observed account age at a given ratio of \feat{level} to \feat{level_progression_speed}. If age is missing, the same limits give a feasible age range. Rearranging the equation gives bounds for a missing level. Model A uses these bounds to estimate missing values and calculate the probability of falling in each zone.
+
+\subsubsection{Data Preprocessing}
+
+The EDA findings lead to five decisions in the training pipeline (Table~\ref{tab:t1-evidence}).
+
+\begin{evidencetable}{EDA evidence and the pipeline decision it motivated (task 1).}{tab:t1-evidence}
+Figure~\ref{fig:t1-balance}. Class balance & Train on labeled rows and preserve class proportions in each fold. \\
+Figure~\ref{fig:t1-signal}. Feature signal & Keep 15 of the 31 raw predictors. \\
+Figure~\ref{fig:t1-missing}. Missingness & Add missing indicators and train Model A on additional masked rows. \\
+Figure~\ref{fig:t1-ranges}. Class-exclusive ranges & Encode the observed ranges with zone flags and age bins. \\
+Figure~\ref{fig:t1-bounds}. Bounds on age and level & Use the two observed values to constrain the missing third value. \\
+\end{evidencetable}
+
+\paragraph{Training rows and raw predictors.} We excluded \feat{player_id} and \feat{is_cheater} from the predictors and retained the 15 raw features identified in Figure~\ref{fig:t1-signal}. Before splitting the data into folds, Model A computed medians, standard deviations, frequency tables, and marginal priors from the full training set, including unlabeled rows. Model C used the labeled training set to compute its statistics and quantile bin edges, and aligned category levels between the training and test sets before fitting.
+
+\paragraph{Missing values.} Models A and C retained \texttt{NaN} in the raw predictors for the tree models to handle. We added \feat{na_*} indicators for \feat{reports_received}, \feat{friend_network_size}, \feat{account_age_days}, \feat{crosshair_placement}, and \feat{level}. The feature \feat{n_missing} counts missing values across the 15 retained raw features.
+
+\paragraph{Bounds for missing values.} Let \texttt{lps = level\_progression\_speed}. The limits shown in Figure~\ref{fig:t1-bounds} give the age bounds $[\text{level}\times 0.15/\text{lps},\ \text{level}\times 1.08/\text{lps}]$ and the level bounds $[\text{lps}\times\text{age}/1.08,\ \text{lps}\times\text{age}/0.15]$. The derived features \feat{age_filled} and \feat{lvl_filled} use the geometric mean of the corresponding bounds when the original value is missing and retain the observed value otherwise.
+
+\paragraph{Zone indicators and Bayesian zone posteriors.} The indicators \feat{zone_cheat} and \feat{zone_legit} use ranges identified in Figure~\ref{fig:t1-ranges}, while \feat{age_segment} bins accounts by age. When age or level is missing and the other two inputs are present, Model A evaluates candidate ages in one-day increments or candidate levels in increments of 0.1. It excludes candidates that violate the limits on $r$ in Figure~\ref{fig:t1-bounds}. For the remaining candidates, the implementation multiplies the empirical prior by the candidate age or divides it by the candidate level, then normalizes the weights to sum to one.
+
+The total weight in an interval such as \texttt{110 <= account\_age\_days < 120} produces a \feat{pa_*} or \feat{pl_*} feature. The weighted means become \feat{age_post_mean} and \feat{lvl_post_mean}. For observed values, the zone probabilities are 0 or 1 according to the interval containing the value.
+
+\paragraph{Additional features.} Models A and C use the transformations in Table~\ref{tab:t1-features}. Model A has 56 features after the posterior features are included.
+
+\begin{table}[H]\centering\small
+\caption{Engineered feature groups and their purpose.}\label{tab:t1-features}
+\begin{tabular}{@{}L{.22\linewidth}L{.73\linewidth}@{}}
+\toprule
+\textbf{Transformation} & \textbf{Examples and Rationale} \\
+\midrule
+Rates per 100 Days & \feat{reports_per_100d}, \feat{friends_per_100d}, and \feat{level_per_100d} use account age plus one in the denominator so the rates can be compared across accounts of different ages. \\
+Interactions & \feat{kd_x_hs} multiplies \feat{kill_death_ratio} by \feat{headshot_percentage}. \feat{acc_x_cross} multiplies \feat{accuracy_score} by \feat{crosshair_placement}. \\
+Skill Summary & \feat{skill_z_sum} sums available skill values after scaling them with training medians and standard deviations, provided at least three values are present. \feat{skill_z_std} summarizes their spread. \\
+Frequencies and Log Transform & \feat{freq_reports} and \feat{freq_friends} encode frequencies from the training data. Separate \texttt{log1p} features transform account age, friend count, progression speed, and report count. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Masking augmentation.} To expose Model A to incomplete records like those in Figure~\ref{fig:t1-missing}, each fold uses four copies of the fitting rows and randomly masks values at the per-feature missing rates measured in the labeled training set. The pipeline rebuilds the engineered features with \feat{build_features_full} and retains the original labels. Masking is limited to these copies so that early stopping, outer validation, and test prediction use the original observations.
+
+\subsubsection{Model Design}
+
+The ensemble gives 70\% of the weight to the masked LightGBM and uses the other two components to combine alternative representations of the data. Figure~\ref{fig:t1-pipeline} shows the full pipeline and Table~\ref{tab:t1-models} gives the weights and the composition of each component.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+% row 1: data and features
+\node[stage] (raw) at (0,0) {Raw data\\31 features};
+\node[stage,fill=\taskcolor{1}!12] (drop) at (5.4,0) {Drop 16 noise features\\15 retained predictors};
+\node[stage,fill=\taskcolor{1}!12] (fe) at (10.8,0) {Feature engineering\\identity bounds $r\in[0.15,1.08]$, zone flags and posteriors, missing indicators};
+% row 2: models
+\node[model,draw=\taskcolor{1}] (A) at (0,-3.6) {\textbf{Model A} (0.70)\\masked LightGBM, 4 masked copies, 45 fits};
+\node[model] (B) at (5.4,-3.6) {\textbf{Model B} (0.20)\\LR stack of LGBM, ExtraTrees, MLP, spline SVM};
+\node[model] (C) at (10.8,-3.6) {\textbf{Model C} (0.10)\\XGB + LGBM + CatBoost, categorical bins};
+% row 3: alignment
+\node[stage,text width=9.6cm] (ecdf) at (5.4,-6.2) {OOF-ECDF rank alignment: scores of each model mapped to OOF percentiles};
+% row 4: blend, threshold, flag
+\node[stage] (blend) at (0,-8.4) {Weighted blend\\0.70 / 0.20 / 0.10};
+\node[decision,draw=\taskcolor{1},thick] (thr) at (5.4,-8.4) {Fixed OOF-F2 threshold\\0.37264};
+\node[stage,fill=\taskcolor{1}!12] (out) at (10.8,-8.4) {Flagged on test\\59.8\% of accounts};
+\draw[flow] (raw) -- (drop);
+\draw[flow] (drop) -- (fe);
+\coordinate (bus) at (10.8,-1.8);
+\draw[thick,ink!75] (fe.south) -- (bus);
+\draw[thick,ink!75] (bus) -- (0,-1.8);
+\draw[flow] (0,-1.8) -- (A.north);
+\draw[flow] (5.4,-1.8) -- (B.north);
+\draw[flow] (bus) -- (C.north);
+\draw[flow] (A.south) -- (A.south |- ecdf.north);
+\draw[flow] (B.south) -- (B.south |- ecdf.north);
+\draw[flow] (C.south) -- (C.south |- ecdf.north);
+\draw[flow] (ecdf.south) -- ++(0,-0.7) -| (blend.north);
+\draw[flow] (blend) -- (thr);
+\draw[flow] (thr) -- (out);
+\node[note,anchor=north] at (5.4,-9.2) {threshold fitted on out-of-fold scores only};
+\end{tikzpicture}
+\caption{Task 1 pipeline from raw features to flagged accounts.}
+\label{fig:t1-pipeline}
+\end{figure}
+
+\begin{table}[H]\centering\small
+\caption{Model components and their weights in the final ensemble.}\label{tab:t1-models}
+\begin{tabular}{@{}L{.15\linewidth}L{.11\linewidth}L{.67\linewidth}@{}}
+\toprule
+\textbf{Component} & \textbf{Weight} & \textbf{Training and Preprocessing} \\
+\midrule
+Model A & 0.70 & LightGBM with masking augmentation and multi-seed bagging. \\
+Model B & 0.20 & Logistic regression stack over LightGBM, ExtraTrees, a PyTorch MLP, and a spline-based linear SVM. \\
+Model C & 0.10 & Blend of tuned XGBoost, LightGBM, and CatBoost with categorical features. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Model A.} Stratified five-fold cross-validation uses seeds 42, 7, and 2024. Each fold is fitted three times at a learning rate of 0.02. Each fit reserves 10\% of its training portion for early stopping on ROC-AUC. The test scores average 45 fitted models.
+
+\paragraph{Model B.} ExtraTrees fills missing values with \texttt{-1}. The MLP uses median imputation and quantile transformation, while the SVM uses median imputation, standardization, and spline features. Each base model generates out-of-fold (OOF) scores on rows held out from its fit. A logistic regression stack is trained in five folds on the four base models' OOF logits. For test prediction, the meta-model is fitted on all base OOF logits.
+
+\paragraph{Model C.} XGBoost, LightGBM, and CatBoost use five folds and blend weights of 0.1834, 0.4848, and 0.3318, respectively. The feature set includes \feat{reports_cat} and \feat{age_segment}, with quantile bins for \feat{friends_bin}, \feat{level_bin}, and \feat{crosshair_bin}.
+
+\subsubsection{Evaluation and Results}
+\label{sec:t1-eval}
+
+ROC-AUC evaluates ranking before a threshold is chosen. Binary F2 evaluates the resulting classifications with \texttt{is\_cheater = 1} as the positive class. In \texttt{5TP / (5TP + 4FN + FP)}, TP denotes a cheater correctly flagged, FN denotes a cheater missed, and FP denotes a legitimate account flagged. The larger weight on FN reflects the emphasis on recall.
+
+The component scores have different distributions. Before blending, we use each model's out-of-fold (OOF) empirical cumulative distribution function (ECDF) to express its scores as percentiles on a common scale. For Model C, this transformation is applied to each base model and then to the combined score. Models A, B, and C are blended with weights \textbf{0.70 / 0.20 / 0.10}. The resulting \texttt{score} ranks accounts on a common scale. A score of 0.70 does not establish a 70\% probability of cheating.
+
+We evaluated 251 candidate thresholds across quantiles 0.20--0.70 of the blended OOF scores. The threshold that maximized binary F2 was \textbf{0.37264}. We applied it to the test scores and saved \texttt{id}, \texttt{pred}, and \texttt{score} in \texttt{task1\_predictions.csv}.
+
+\paragraph{Results.} Table~\ref{tab:t1-results} lists the OOF results.
+
+\begin{table}[H]\centering\small
+\caption{OOF results for recorded model components and the final ensemble.}\label{tab:t1-results}
+\begin{tabular}{@{}L{.47\linewidth}L{.20\linewidth}L{.24\linewidth}@{}}
+\toprule
+\textbf{Model} & \textbf{OOF ROC-AUC} & \textbf{OOF Binary F2} \\
+\midrule
+Model A: LightGBM with Masking & 0.89482 & --- \\
+Model B: Logistic Regression Stack & 0.89283 & --- \\
+Model C: XGBoost base learner & 0.89128 & --- \\
+Model C: LightGBM base learner & 0.89193 & --- \\
+Model C: CatBoost base learner & 0.89116 & --- \\
+Final A/B/C Ensemble & \textbf{0.89501} & \textbf{0.83979} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Ranking.} Table~\ref{tab:t1-results} shows an OOF ROC-AUC gain of \textbf{0.00019} over Model A.
+
+\textbf{Classification.} The ensemble reached \textbf{0.83979} binary F2 at an OOF threshold of \textbf{0.37264}. The component F2 values were not reported, so Table~\ref{tab:t1-results} cannot establish an F2 gain over Model A.
+
+\textbf{Review volume.} The same threshold flagged \textbf{62.80\%} of OOF accounts and \textbf{59.81\%} of test accounts. These are the shares sent for review if every flagged account is investigated.
+
+\paragraph{Operating point.} Figure~\ref{fig:t1-operating} shows why the cut sits near 60\%. Binary F2 rewards recall, so its optimum lies far to the right of the macro-F2 optimum (about 41\% flagged). A leaderboard probe that moved the cut from the macro optimum to the binary optimum (\texttt{sub\_v10d} $\to$ \texttt{probe\_v10e}) raised the public score by $+0.0128$, which showed that the leaderboard metric is binary F2. Small shifts of the cut change little: a 61\% cut scored $-0.00016$ against the 60\% cut.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t1_f2_operating_point.png}
+\caption{OOF binary F2 and macro F2 against the fraction flagged, from the local pipeline's clean ECDF blend (threshold 0.3769, 62.4\% OOF optimum, 59.33\% flagged on test). The final notebook reports 0.37264 and 59.81\%; the curve shape is the same.}
+\label{fig:t1-operating}
+\end{figure}
+
+\paragraph{Pipeline improvements.} The A/B/C labels group multiple learners rather than three single algorithms. Model B stacks LightGBM (OOF ROC-AUC 0.89285), ExtraTrees (0.86112), PyTorch MLP (0.84681), and spline LinearSVC (0.83907) with logistic regression; the stack reached 0.89283. Model C's XGBoost, LightGBM, and CatBoost base-learner scores are listed in Table~\ref{tab:t1-results}. Each recorded Model C learner and the Model B stack scored below Model A. Preprocessing differed by learner: Model A uses four randomly masked copies per fitting fold; Model B uses learner-specific imputation and transformations; Model C adds categorical quantile bins. After prediction, ECDF alignment puts component scores on a common scale before the weighted blend.
+
+\paragraph{Decision log.} Figure~\ref{fig:t1-decision-log} will summarize every experiment we kept, dropped or excluded for rule reasons; the underlying rows are in \texttt{data/decision\_log\_t1.csv}.
+
+\placeholderfigure{fig:t1-decision-log}{Task 1 decision log: change in score per experiment, kept versus dropped versus rule-excluded.}%
+{horizontal dot chart from data/decision\_log\_t1.csv, to be saved as figures/decision\_log\_t1.pdf (generated by scripts/gen\_decision\_logs.py)}{which T1 experiments were adopted, which were noise, and which were ruled out}
+
+\subsubsection{Insights from Model Behaviour}
+
+The final blend improves OOF ROC-AUC by 0.00019 over Model A (Table~\ref{tab:t1-results}). Component F2 values and a raw-feature baseline were not recorded, so the comparison cannot identify which learner or preprocessing step produced the gain or establish a component-level F2 improvement. The one isolated ablation we have is the masking augmentation (Figure~\ref{fig:t1-masking}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fig_t1_lps_identity.png}
+\caption{(a) The ratio $r$ has the same uniform distribution in both classes (univariate AUC 0.5011), so it is a class-neutral identity. (b) OOF ROC-AUC with and without four masked copies (seed 42) by number of missing signal features per row; the gain grows from $+0.00006$ with no missing values to $+0.00229$ with four or more.}
+\label{fig:t1-masking}
+\end{figure}
+
+Figure~\ref{fig:t1-masking} shows that masking helps mostly where information is scarce: the more signal features a row is missing, the larger the gain, which matches the reason we trained on masked copies. The overall effect is small (OOF AUC 0.89403 to 0.89446).
+
+\paragraph{Where errors can concentrate.} The overlap in Figure~\ref{fig:t1-ranges} identifies feature ranges worth examining for classification errors. The reported results are aggregate scores. To determine where errors are concentrated, we would need to count false positives and false negatives by feature range and missingness pattern.
+
+\paragraph{Takeaways.} (i) The values near 0.5 in Figure~\ref{fig:t1-signal} indicate weak ranking performance for a feature on its own; model comparisons are needed to assess whether it adds information in combination with other features. (ii) Masking (Figure~\ref{fig:t1-missing}) and bound-based estimation (Figure~\ref{fig:t1-bounds}) are different tools: masking teaches the model to cope with missing values, while the bounds estimate a missing age or level when the other two values are known. (iii) The relationship in Figure~\ref{fig:t1-bounds} lets the model use two observed account features to constrain a third when it is missing.
+
+\subsubsection{Common Mistakes and Failed Experiments}
+
+\paragraph{Optimising the wrong F-score.} We first cut at the macro-F2 optimum (about 40\% flagged). The leaderboard turned out to score binary F2, and moving the cut to the binary optimum gained $+0.0128$ (Figure~\ref{fig:t1-operating}).
+
+\paragraph{Cut chosen from test ranks (rule issue).} Our earlier submissions flagged the top 60\% of the \emph{test} scores. The TA ruled on 16 November that every prediction parameter (prior, threshold, scaler) must be computable without seeing the test set. We replaced it with a fixed threshold fitted on OOF scores: each model's test scores are mapped through its own OOF ECDF and the cut is the OOF binary-F2 optimum (0.37264), which flags 59.8\% of the test accounts. The change moved only about 176 accounts, all near the cut.
+
+\paragraph{Experiments that did not help.} Pseudo-labels on the 13,184 unlabeled training rows gave $-0.00008$ on the public leaderboard (soft weights) and $-0.00006$ (hard labels), although plain cross-validation had suggested $+0.00041$. A non-negative logit stack scored $0.00041$ below the rank blend in nested CV. Thirteen seeds instead of three changed nested binary F2 from 0.83919 to 0.83927, which is noise. Cross-fitted linear skill logits added $+0.0003$ AUC but no F2 gain. TabPFN was estimated to add $+0.00016$ and was not adopted. All rows are in the decision log (Figure~\ref{fig:t1-decision-log}).
+
+\paragraph{Limitations of the validation.} The reported binary F2 reflects threshold selection and evaluation on the same OOF scores. In addition, Model A's reference statistics and Model C's quantile bin edges were computed before the folds were split, while Model B trained its meta-model on a precomputed set of base OOF scores. A separate holdout would let us evaluate the selected threshold on rows that played no part in choosing it. Alternatively, preprocessing, stacking, and threshold selection could all be fitted within nested cross-validation.
+
+\paragraph{Cost of extra models.} Table~\ref{tab:t1-results} shows a small ROC-AUC gain over Model A. A separate comparison of binary F2 and runtime would help determine whether the three-component ensemble is worthwhile.
+
+\subsubsection{Domain Interpretation and Business Impact}
+
+An anti-cheat team could use \texttt{score} to prioritize account reviews and \texttt{pred} to identify accounts at or above the competition threshold. The 59.81\% test flag rate reported in Results means that the competition threshold would send nearly six out of ten accounts into the review queue. An operational threshold should reflect review capacity and the cost of missing a cheater. The class-exclusive ranges in Figure~\ref{fig:t1-ranges} should also be checked on live player data before they inform account decisions.
+
+To decide whether to keep the ensemble in production, compare it with Model A on a separate holdout using binary F2, runtime, and the share of accounts flagged. Break down precision and recall by missingness pattern and by the overlapping ranges in Figure~\ref{fig:t1-ranges} to show where either model needs improvement.
+
+\end{document}

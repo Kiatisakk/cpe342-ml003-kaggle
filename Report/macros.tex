@@ -1,0 +1,64 @@
+% Shared macros, colours and TikZ styles. Documented in SPEC.md.
+% ---- Palette (dataviz skill, validated; see SPEC.md) ----
+\definecolor{task1}{HTML}{257DE0}   % blue
+\definecolor{task2}{HTML}{F47230}   % orange
+\definecolor{task3}{HTML}{00B894}   % aqua
+\definecolor{task4}{HTML}{6A4CE2}   % violet
+\definecolor{task5}{HTML}{EE7FAC}   % magenta
+\definecolor{kept}{HTML}{008A17}    % green
+\definecolor{dropped}{HTML}{8A8A8A} % grey
+\definecolor{ruleex}{HTML}{DC3C3D}  % red (hatched in charts)
+\definecolor{ink}{HTML}{191919}
+\definecolor{inkmuted}{HTML}{666666}
+\definecolor{gridline}{HTML}{E7E7E7}
+\definecolor{todocol}{HTML}{B45309}
+
+% \taskcolor{N} expands to the colour name task<N>, e.g. fill=\taskcolor{1}!15
+\newcommand{\taskcolor}[1]{task#1}
+
+% \feat{kill_death_ratio}: monospace feature name that can break after underscores
+\newcommand{\feat}[1]{\texttt{\StrSubstitute{#1}{_}{\_\allowbreak{}}}}
+
+% \todo{text}: visible marker for unfinished content
+\newcommand{\todo}[1]{{\color{todocol}\textbf{[TODO: #1]}}}
+
+% \placeholderfig{what it shows}{decision it supports}: fixed-height frame, needs no image
+\newcommand{\placeholderfig}[2]{%
+\begin{tcolorbox}[enhanced,colback=gridline!35,colframe=white,boxrule=0pt,borderline={0.7pt}{0pt}{inkmuted,dashed},
+  height=4.6cm,valign=center,halign=center,sharp corners,left=6pt,right=6pt]
+\textbf{Figure placeholder}\\[2pt]
+\emph{Shows:} #1\\[2pt]
+\emph{Supports decision:} #2
+\end{tcolorbox}}
+
+% \placeholderfigure{label}{caption}{what it shows}{decision it supports}: floated version
+\newcommand{\placeholderfigure}[4]{%
+\begin{figure}[H]\centering
+\placeholderfig{#3}{#4}
+\caption{#2}\label{#1}
+\end{figure}}
+
+% evidencetable: \begin{evidencetable}{caption}{label} Evidence & Decision \\ ... \end{evidencetable}
+\newenvironment{evidencetable}[2]{%
+\begin{table}[H]\centering\small
+\caption{#1}\label{#2}
+\begin{tabular}{@{}L{.38\linewidth}L{.56\linewidth}@{}}
+\toprule
+\textbf{EDA evidence} & \textbf{Pipeline decision} \\
+\midrule}{%
+\bottomrule
+\end{tabular}
+\end{table}}
+
+% ---- TikZ pipeline styles ----
+\tikzset{
+  stage/.style={draw=ink!70,fill=gridline!50,rounded corners=3pt,thick,align=center,
+    text width=4.3cm,minimum height=9mm,inner sep=4pt,font=\footnotesize},
+  model/.style={draw=ink!80,fill=white,thick,align=center,text width=4.3cm,
+    minimum height=11mm,inner sep=4pt,font=\footnotesize},
+  decision/.style={draw=ink!80,fill=white,thick,align=center,text width=4.3cm,
+    minimum height=9mm,inner sep=4pt,font=\footnotesize,chamfered rectangle,
+    chamfered rectangle xsep=6pt},
+  flow/.style={-{Stealth[length=2.2mm]},thick,ink!75},
+  note/.style={font=\scriptsize\itshape,text=inkmuted,align=center}
+}
