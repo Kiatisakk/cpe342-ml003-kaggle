@@ -1,3 +1,40 @@
 \section{Executive Summary}
 \label{sec:summary}
-\todo{Task $\times$ metric $\times$ method $\times$ result table, reference submission \texttt{sub\_v90f\_entropy\_dualhead\_md.csv} (public LB 0.87351, 1st), three headline takeaways.}
+
+Karena Thailand, the fictional publisher in the course brief, wants a Player Intelligence System that protects game integrity, targets monetisation, understands player behaviour and improves retention. Our team (ML003) built five models that feed such a system and combined their predictions in one Kaggle submission, \texttt{sub\_v90f\_entropy\_dualhead\_md.csv}, which scored \textbf{0.87351 on the public leaderboard (1st place)}. Our probes showed that each task carries about one fifth of the public score, so every task matters. Figure~\ref{fig:summary-overview} shows how the tasks fit together and Table~\ref{tab:summary-master} lists the metric, method, validation result and business use of each one.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,
+  tk/.style={draw=ink!70,rounded corners=3pt,thick,align=center,text width=2.7cm,minimum height=15mm,inner sep=3pt,font=\scriptsize}]
+\node[tk,fill=\taskcolor{1}!14] (a) at (0,0) {\textbf{T1 Anti-cheat}\\binary F2};
+\node[tk,fill=\taskcolor{2}!14] (b) at (3.15,0) {\textbf{T2 Segments}\\macro F1};
+\node[tk,fill=\taskcolor{3}!14] (c) at (6.3,0) {\textbf{T3 Spending}\\NMAE score};
+\node[tk,fill=\taskcolor{4}!14] (d) at (9.45,0) {\textbf{T4 Game titles}\\macro F1};
+\node[tk,fill=\taskcolor{5}!14] (e) at (12.6,0) {\textbf{T5 Account security}\\F3 (no labels)};
+\node[draw=ink!80,thick,rounded corners=3pt,fill=gridline!50,align=center,text width=12.8cm,minimum height=10mm,font=\footnotesize] (ltv) at (6.3,-2.5) {\textbf{Player Intelligence System} (course vision: player lifetime value)\\review queue $\cdot$ campaign targeting $\cdot$ VIP and revenue planning $\cdot$ support routing $\cdot$ security alerts};
+\foreach \n in {a,b,c,d,e}{\draw[flow] (\n.south) -- (\n.south |- ltv.north);}
+\end{tikzpicture}
+\caption{The five tasks and the decisions they support in the Player Intelligence System.}
+\label{fig:summary-overview}
+\end{figure}
+
+\begin{table}[H]\centering\scriptsize
+\caption{Task, metric, final approach, validation result and business use. Validation results are out-of-fold (OOF) on training data, except Task 4 (held-out scenes) and Task 5 (no labels).}
+\label{tab:summary-master}
+\begin{tabular}{@{}L{.10\linewidth}L{.12\linewidth}L{.31\linewidth}L{.17\linewidth}L{.22\linewidth}@{}}
+\toprule
+\textbf{Task} & \textbf{Metric} & \textbf{Final approach} & \textbf{Validation} & \textbf{Business use} \\
+\midrule
+T1 cheater detection & binary F2 of the cheater class & Algebraic bounds for missing values, ECDF-aligned rank blend of masked LightGBM, a logistic stack and a GBM trio, fixed OOF-optimal threshold & OOF binary F2 0.839 & Priority queue for the manual review team \\
+T2 player segments & macro F1, 4 classes & Label-noise-aware histogram Naive Bayes blended with a spline logistic regression and an MLP, affine decision rule fitted on OOF & OOF macro F1 0.7583 & Personalised campaigns by segment \\
+T3 monthly spending & NMAE score & Exact identity recovery, two-stage hurdle model (payer probability and multi-quantile regression) predicting the MAE-optimal quantile & OOF NMAE score 0.7954 & VIP support, discounts and revenue forecast \\
+T4 game title from screenshot & macro F1, 5 classes & LoRA fine-tuned DINOv3 ViT-7B (model soup, dual heads, multi-depth) with ConvNeXt, EVA02 and ViT companions, entropy-weighted fusion, train-prior logit adjustment & Held-out scene fold macro F1 0.9948 (21 errors in 5,113) & Support routing and screenshot verification \\
+T5 account anomalies & F3 of the anomaly class & Union of shock rules, four gap clusters, a 3-metric box and a Bayesian recovery of hidden members; 2,104 accounts flagged & No labels: estimated F3 about 0.997 & Security alert triage \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{How we worked.} Three habits produced most of the score; they are the thread of Section~\ref{sec:methodology}. (i) \emph{Reverse-engineer the data-generating process first.} The data are synthetic, and every task had exact identities, uniform boxes, empty gaps or a mixture structure that a generic model cannot see. Finding them gave larger gains than any tuning. (ii) \emph{Turn the metric into a decision rule.} Binary F2 asks for a threshold near the 60\% flag rate, NMAE asks for a conditional quantile $q=1-1/(2p)$ instead of a mean, macro F1 asks for per-class decision weights, and F3 asks for a 10\% break-even probability. (iii) \emph{Validate without leakage and without trusting a single number.} Out-of-fold scores stayed consistent with the public leaderboard for Tasks 1 to 3, but not for Task 4, where the public images are harder than any random fold; there we used scene-grouped folds and one-change leaderboard probes.
+
+\paragraph{Rule compliance.} The competition rules forbid using the test set for training-related purposes. In two rulings (15 and 16 November) the teaching assistant (TA) clarified that using test images or test predictions to choose a validation split, an augmentation or a class prior is not allowed, while priors, class weights and thresholds computed from the training set and applied to the test set as fixed values are allowed. Our final submission follows those rulings: every imputer, scaler, bin edge, calibration temperature, threshold and the Task 4 logit adjustment is computed from training data. We removed an earlier test-prediction-based prior correction and a test-rank threshold, and did not use the identifier leaks found in the first data release (Sections~\ref{sec:t1}, \ref{sec:t4} and \ref{sec:t5}). Task 5 has no training set, so its cuts are necessarily read from the unlabeled file; \todo{state the TA's answer on Task 5 if received}.

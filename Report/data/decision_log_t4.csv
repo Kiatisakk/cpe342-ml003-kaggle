@@ -1,0 +1,25 @@
+experiment,metric,delta,status,source,note
+Add DINOv3 ConvNeXt-S as third fine-tuned model,LB public,0.00119,kept,CLAUDE.md LB log (sub_v28 vs v25a),Nested OOF had predicted only +0.0005; a bigger DINOv3 backbone helps more on the shifted test
+Equal-weight geometric mean of four fine-tuned models (adds ConvNeXt-B),LB public,0.00263,kept,CLAUDE.md LB log (sub_v30 vs v28),OOF on 21031 rows: 0.99320 vs 0.99292
+Frozen-feature linear heads blended with fine-tuned models (30% then 50%),LB public,0.00261,kept,CLAUDE.md LB log (sub_v32 vs v30),Sum of +0.00171 and +0.00090; first heads were trained with dark/saturation views that the rules later disallowed
+Add EffNetV2-S as a weak third model,LB public,-0.00157,dropped,CLAUDE.md LB log (sub_v26_T4eq3effv2 vs v25a),Equal weights let the weaker model hurt; OOF ranking held
+Wider colour augmentation (EVA02),LB public,-0.00054,dropped,CLAUDE.md LB log (sub_v26_T4coloraug),Did not close the test shift
+Class-mix prior estimated by EM on test predictions (a = 0.5),LB public,0.00239,rule_excluded,CLAUDE.md LB log (sub_v33 vs v32),TA ruling 16 Nov: test-derived priors are not allowed
+EM prior with a = 1,LB public,0.00081,rule_excluded,CLAUDE.md LB log (sub_v34 vs v33),Rule-excluded
+EM prior with a = 1.5,LB public,-0.00194,rule_excluded,CLAUDE.md LB log (sub_v40 vs v37),Over-correction; rule-excluded
+EM prior on top of the LoRA blend,LB public,-0.0111,rule_excluded,CLAUDE.md LB log (sub_v79b_em_T5acct),Confident LoRA makes the EM prior extreme
+kNN smoothing with test-test neighbours,LB public,-0.00077,dropped,CLAUDE.md LB log (sub_v41 vs v37),Scene-group CV had predicted +0.0045 F1; transductive and also against the rules
+Frozen ViT-7B head plus full-train fine-tuned set (no EM),LB public,0.00318,kept,CLAUDE.md LB log (sub_v74b_clean vs v37n),First clean file with the 7B frozen head and full-train fine-tuned models
+LoRA ViT-7B 75% depth at weight 0.5,LB public,0.00216,kept,CLAUDE.md LB log (sub_v79a_clean vs v74b_clean),Fold-0 scene CV predicted the direction
+LoRA weight 0.7 instead of 0.5,LB public,0.00076,kept,CLAUDE.md LB log (sub_v79b_clean vs v79a_clean),
+LoRA weight 0.85 instead of 0.7,LB public,0.00005,kept,CLAUDE.md LB log (sub_v79c_clean vs v79b_clean),Flat top; weight tuning closed
+LoRA alone (weight 1.0),LB public,-0.00035,dropped,CLAUDE.md LB log (sub_v79d_clean vs v79c_clean),The frozen blend still adds a little
+Average two LoRA seeds,LB public,-0.00022,dropped,CLAUDE.md LB log (sub_v80a_clean vs v79c_clean),Seed averaging is noise on the public LB
+Uniform train-prior logit adjustment (a = 1),LB public,0.00198,kept,CLAUDE.md LB log (sub_v81b vs v79c),Uses only train class counts; allowed by the TA
+Exact weight-space LoRA soup with refit head,LB public,0.00039,kept,CLAUDE.md LB log (sub_v85a vs v81b),Fold-0 errors 30 to 21 after the prior
+Third adapter in the soup,LB public,-0.0002,dropped,CLAUDE.md LB log (sub_v85b vs v85a),
+Two-view refit head,LB public,-0.00011,dropped,CLAUDE.md LB log (sub_v86a vs v85a),Fold 0 20 vs 21 errors did not transfer
+Multi-scale test-time augmentation of the LoRA model,LB public,-0.00013,dropped,CLAUDE.md LB log (sub_v84a vs v81b),Fold 0 fixed 3 errors; no gain on test
+Logit-adjusted training instead of post-hoc prior,LB public,-0.00088,dropped,CLAUDE.md LB log (sub_v86b vs v81b),Fold 0: 34 errors vs 30
+Concat-feature MLP head on frozen features,LB public,0.00002,dropped,CLAUDE.md LB log (sub_v59r3_noMLP vs v59r3),OOF and hard-row OOF gains did not reach the LB
+Final recipe: temperature calibration + entropy-weighted pooling + multi-depth LoRA,LB public,0.00005,kept,git commit ce783a5 (best LB 0.87351) vs sub_v85a,Reference submission sub_v90f; intermediate v88-v91 steps are not in the log

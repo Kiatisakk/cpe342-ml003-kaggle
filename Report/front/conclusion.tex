@@ -1,3 +1,21 @@
 \section{Conclusion}
 \label{sec:conclusion}
-\todo{Lessons learned, machine learning in the game industry, future work.}
+
+\paragraph{Lessons from model building and evaluation.}
+\begin{itemize}[leftmargin=*,itemsep=3pt]
+\item \textbf{Understand the generator before choosing a model.} Exact identities (Tasks 1 and 3), a latent two-by-two structure (Task 2), empty gaps (Task 5) and near-duplicate scenes (Task 4) gave more than model tuning. In several tasks the tuned models were at a ceiling set by the data's own noise.
+\item \textbf{Optimise the decision rule of the metric, not the loss.} A threshold near 60\% flagged for binary F2 (a leaderboard probe gained $+0.0128$ over the macro-F2 cut), the conditional quantile $q=1-1/(2p)$ for NMAE, a fixed-point affine rule for macro F1, and a 10\% break-even for F3. Each is a few lines of code and worth more than another model in the blend.
+\item \textbf{Out-of-fold scores can mislead under distribution shift.} In Task 4 the random-fold score reached 0.99 while the public test was harder: random folds contain near-duplicate scenes, so they measure memorisation. Scene-grouped folds ranked models better, although even they did not predict every leaderboard result (kNN smoothing improved the grouped score and lost on the public test).
+\item \textbf{Isolate one change per probe.} Because the score averages five tasks, a change in one task is small and noisy. One-change probes, with the expected effect written down beforehand, separated real gains from luck, and showed that most late tuning (blend weights, seeds, thresholds) was below the leaderboard's resolution.
+\item \textbf{Compliance is part of the method.} Two identifier leaks, a test-rank threshold and a test-prediction prior correction all helped the public score or would have, and we removed or did not use them after the TA's rulings. The compliant pipeline scores slightly lower on the leaderboard and is the one we can defend.
+\end{itemize}
+
+\paragraph{Machine learning in the game industry.} The five tasks show that game platforms generate cheap, plentiful, mostly tabular data in which the useful signal is often in the structure of missing values, ratios and joint ranges rather than in a large model. Decisions are asymmetric: a missed cheater or account takeover costs far more than a review, so metrics such as F2 and F3 and explicit thresholds are the business interface. Model outputs are useful only when the operations team can understand them (which rule fired, which segment, which game), and any model that scores players needs monitoring, because behaviour, content and cheating methods drift. Image models face a shifting content stream (new maps, new seasons), which is why Task 4 needed validation by scene rather than by image.
+
+\paragraph{Future improvements.}
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item \textbf{Validation.} Select thresholds and blend weights inside nested cross-validation or on a separate holdout (Task 1), and evaluate Task 4 on scenes that are unseen by construction.
+\item \textbf{Task 4.} More backbones no longer moved the public score; the next gains are more likely from handling the dark, low-confidence test images and from checking the train-prior adjustment on a held-out set with a different class mix.
+\item \textbf{Task 5.} Combine the transparent rules with a model trained on real traffic and analyst feedback, and use rolling windows for drift.
+\item \textbf{System level.} Connect the five predictions in an actual lifetime-value model (the course's final system), which we did not build, and measure the effect of each task on that target.
+\end{itemize}

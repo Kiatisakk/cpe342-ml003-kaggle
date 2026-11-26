@@ -17,7 +17,7 @@
 \newcommand{\taskcolor}[1]{task#1}
 
 % \feat{kill_death_ratio}: monospace feature name that can break after underscores
-\newcommand{\feat}[1]{\texttt{\StrSubstitute{#1}{_}{\_\allowbreak{}}}}
+\DeclareRobustCommand{\feat}[1]{\texttt{\StrSubstitute{\detokenize{#1}}{\detokenize{_}}{\_\allowbreak{}}}}
 
 % \todo{text}: visible marker for unfinished content
 \newcommand{\todo}[1]{{\color{todocol}\textbf{[TODO: #1]}}}
