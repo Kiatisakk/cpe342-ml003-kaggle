@@ -1,0 +1,16 @@
+experiment,metric,delta,status,source,note
+Drop player_id and 16 noise columns,not isolated,,kept,task2_eda.ipynb Step 2,"Every dropped column has ANOVA log(1+F) <= 1.15 or Cramer's V < 0.008; no separate ablation"
+Histogram NB with EM label-noise model and inner log-loss density selection vs uniform-bin NB,5-fold CV macro F1 (first release),0.0012,kept,local pipeline REPORT (E00/E14),0.7550 to 0.7562; first-release data
+Per-feature Optuna tuning of NB smoothing on F1 (46 parameters),nested CV macro F1 (first release),-0.0004,dropped,local pipeline REPORT (E13),0.7544 vs 0.7548 uniform on seed 42; replaced by inner log-loss selection
+Blend 0.87 NB / 0.08 spline LR / 0.05 MLP vs NB alone,OOF macro F1 (new data),0.00032,kept,task2.ipynb output,0.75766 to 0.75798
+Fixed-point affine macro-F1 rule vs argmax,OOF macro F1 (new data),0.00028,kept,task2.ipynb output,0.75798 to 0.75826; changes 2056 of 104000 rows
+Blend + affine rule replaces plain NB in the submission,LB public (first release),0.00034,kept,CLAUDE.md LB log (sub_v18a vs v16b),0.71965 to 0.71999; T2 about +0.0017 at weight 0.2
+Re-tuned blend weights (nested 3x5 CV),nested CV macro F1 (new data),0.00006,dropped,CLAUDE.md (13 Nov re-tune),+-0.00018; 8 of 15 folds improved; kept 0.87/0.08/0.05
+Nelder-Mead class weights vs affine rule,nested CV macro F1,-0.00043,dropped,CLAUDE.md (10 Nov techniques),+0.00019 vs argmax but 0.00043 below the affine rule
+LightGBM (tuned) instead of NB,5-fold CV macro F1 (first release),-0.0038,dropped,local pipeline REPORT (E17b),0.7524 vs 0.7562; train score 0.7925 (overfit)
+Multinomial spline GAM instead of NB,5-fold CV macro F1 (first release),-0.0033,dropped,local pipeline REPORT (E02),0.7529 vs 0.7562
+Feature-weighted NB (WANBIA),5-fold CV macro F1 (first release),-0.0021,dropped,local pipeline REPORT (E04),0.7539 to 0.7542 vs 0.7562 (upper end used)
+2x2 factorised NB,5-fold CV macro F1 (first release),-0.0012,dropped,local pipeline REPORT (E09),0.7550 vs 0.7562; data rejected the axis merge in 26 of 28 features
+QDA instead of NB,OOF macro F1 (new data),-0.0823,dropped,local pipeline blind runs,0.6754 vs 0.75766
+Class-prior estimate from test predictions (Saerens EM),not scored,,rule_excluded,CLAUDE.md section 3 and TA ruling 16 Nov,No prior shift found; TA ruling bars estimating test-set parameters
+player_id block rule (first-release leak),LB public (first release),0.0427,rule_excluded,CLAUDE.md LB log (sub_v10c vs v10d),0.66614 to 0.70885; OOF macro F1 0.9677; data re-released 12 Nov and file not used

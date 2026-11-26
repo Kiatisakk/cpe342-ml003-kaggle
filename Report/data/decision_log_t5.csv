@@ -1,0 +1,11 @@
+experiment,metric,delta,status,source,note
+T5 all zero (flag nobody) vs the 1811-row union,LB public,-0.17719,dropped,CLAUDE.md LB log (v6_minus_task5 0.46572 vs sub_v6 0.64291),Probe only: shows how much weight T5 carries (about 0.2)
+Add 3-metric acckda box (+244 rows; 1811 to 2055 rows),estimate LB (inside bundled sub_v10c),0.0214,kept,CLAUDE.md (interpretation of sub_v10c),Estimate: sub_v10c changed T1/T2/T3/T4 as well; old data release
+Loosened rules + TMAE autoencoder rank (+1791 rows),LB public,-0.01239,dropped,CLAUDE.md LB log (sub_v6_T5_3602 0.63052),Old data; added rows held about 0-5% true anomalies
+Wider shock rule: z 4-6 and geo 2-5 degrees (+356 rows),LB public,-0.00246,dropped,CLAUDE.md LB log (sub_v6_T5_2167 0.64045),Old data
+lowstab-NaN posterior cut 0.05 instead of 0.10 (+18 rows),LB public,0.00002,dropped,CLAUDE.md LB log (sub_v20d),Noise; kept 0.10
+lowstab-NaN posterior cut 0.15 instead of 0.10 (-17 rows),LB public,-0.00012,dropped,CLAUDE.md LB log (sub_v20e),Dropped rows held true anomalies: posterior looks calibrated
+lowstab-NaN prior 13 instead of 14 (-6 rows; new data),LB public,-0.00004,dropped,CLAUDE.md (sub_v27_T5prior13),Noise; kept 2104 rows
+Extra rows with probability >= 0.50 (+26 rows; teammate file v25c),LB public,-0.00025,dropped,CLAUDE.md (teammate submissions 13 Nov),Extra T5 rows hurt again
+Account-level extras: +11 rows (lowact-NaN and lowstab prior 17; sub_v87e),LB public,-0.0001,dropped,CLAUDE.md (v87 round 22 Nov),Keep 2104 rows
+Flag the player-id block (player_id >= 23819) as anomalies on the old data,not applicable,,rule_excluded,CLAUDE.md (id block 6 Nov; TA rulings 15-16 Nov),Matched our box set; never used in clean files; leak removed by the 12 Nov data re-release

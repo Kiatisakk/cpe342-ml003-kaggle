@@ -1,0 +1,57 @@
+% !TeX program = xelatex
+% Master file. Compile with: latexmk -xelatex main.tex
+\documentclass[11pt,a4paper]{article}
+\usepackage{subfiles}
+% \rootdir lets preamble/macros be found both from main (Report/) and from a standalone subfile (Report/taskN/)
+\ifSubfilesClassLoaded{\def\rootdir{../}}{\def\rootdir{}}
+\input{\rootdir preamble}
+
+\begin{document}
+\raggedbottom
+
+\begin{titlepage}
+\centering
+\vspace*{18mm}
+{\large CPE342 Machine Learning\par}
+\vspace{4mm}
+{\large Team ML003\par}
+\vspace{14mm}
+{\Huge\bfseries Karena Player Intelligence System\par}
+\vspace{3mm}
+{\LARGE Technical Report\par}
+\vspace{14mm}
+\begin{tabular}{@{}rl@{}}
+\textbf{Competition:} & player-intelligence-system-cpe-342-ml \\
+\textbf{Reference submission:} & \texttt{sub\_v90f\_entropy\_dualhead\_md.csv} \\
+\textbf{Public leaderboard:} & 0.87351 (1st place) \\
+\textbf{Tasks:} & T1 anti-cheat, T2 segmentation, T3 spending, \\
+ & T4 game titles, T5 account security \\
+\end{tabular}\par
+\vspace{14mm}
+\begin{tikzpicture}
+\foreach \i in {1,...,5}{\fill[task\i] (\i*1.4,0) rectangle ++(1.2,0.18);}
+\end{tikzpicture}\par
+\vfill
+{\small Submission due on LEB2, 28 November 2026\par}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+\listoffigures
+\listoftables
+\clearpage
+
+\input{front/summary}
+
+\section{Methodology}
+\label{sec:methodology}
+\subfile{task1/task1}
+\subfile{task2/task2}
+\subfile{task3/task3}
+\subfile{task4/task4}
+\subfile{task5/task5}
+
+\input{front/collaboration}
+\input{front/conclusion}
+\input{front/appendix}
+\end{document}

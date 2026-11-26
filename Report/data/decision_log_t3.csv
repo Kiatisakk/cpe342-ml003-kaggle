@@ -1,0 +1,22 @@
+experiment,metric,delta,status,source,note
+Two-stage hurdle with MAE-optimal rule (HGB first version),OOF NMAE,,kept,local pipeline REPORT (milestones),0.7843 starting point; point prediction q = 1 - 1/(2p)
+XGBoost multi-quantile hurdle (v4) vs HGB two-stage,OOF NMAE,0.00761,kept,local pipeline REPORT (E02),0.7843 to 0.79191 (nested LAD blend); superseded
+Offset log(y/prev) instead of log1p(y) target (XGBoost),OOF NMAE,0.002,kept,local pipeline REPORT (E06),0.79191 to 0.79391
+CatBoost depth-4 multi-quantile instead of XGBoost (one seed),OOF NMAE,0.001,kept,local pipeline REPORT (E30),0.79405 to 0.79505
+Seed bag 3x3 vs one seed,OOF NMAE,0.00024,kept,local pipeline REPORT (bag_q3p3),0.79505 to 0.79529; 5 of 5 folds up
+Seed bag 10x10 vs 3x3 (final),OOF NMAE,0.00006,kept,task3.ipynb output,0.79529 to 0.79535 in the notebook (0.79537 saved ensemble)
+10-seed bag in the submission,LB public,0.00001,kept,CLAUDE.md LB log (sub_v24a vs v23a),As predicted by OOF
+All-zero Task 3 probe,LB public,-0.0590,kept,CLAUDE.md LB log (probe_v10g),Probe not a model change: confirms NMAE formula (0.2 x (0.795 - 0.5))
+Direct log-link MAE on raw y,OOF NMAE,-0.0146,dropped,local pipeline REPORT (E17),0.77949 vs 0.79405
+Whale-only specialist,OOF NMAE,-0.0026,dropped,local pipeline REPORT (E13),0.79148 vs 0.79405
+Fitted linear or ridge offset instead of unit slope,OOF NMAE,-0.0018,dropped,local pipeline REPORT (E08),0.79223 vs 0.79405 (ridge -0.0012)
+Row weights prop. to sqrt(prev),OOF NMAE,-0.0014,dropped,local pipeline REPORT (E09),0.79263 vs 0.79405
+Purchase-cadence features,paired CV NMAE,-0.00023,dropped,CLAUDE.md (10 Nov techniques),4 of 5 folds worse
+Fourier month features,paired CV NMAE,-0.00009,dropped,CLAUDE.md (round12),5 of 5 folds worse
+Optuna search on CatBoost,paired CV NMAE (folds 2-4),-0.00013,dropped,local pipeline REPORT (R6-01),Gain on folds 0-1 did not transfer
+Fill is_premium_member from vip_status >= 3,OOF NMAE (one seed),-0.00007,dropped,work/insight INSIGHTS.md (c08),0.79499 vs 0.79506; 2 of 5 folds up
+Pooled residual-quantile shape instead of 11 fitted quantiles,OOF NMAE (one seed),-0.00007,dropped,work/insight INSIGHTS.md (c09),0.79499 vs 0.79506
+CatBoost native categoricals,paired CV NMAE,0.00007,dropped,CLAUDE.md (10 Nov techniques),+-0.00011; 3 of 5 folds: noise
+Neural mixture of log-normals blended in,OOF NMAE,0,dropped,CLAUDE.md section 4 (NN blend adds 0),NN_K3 alone 0.7901
+50/50 robust-model blend,LB public,0,dropped,CLAUDE.md LB log (sub_v18c and v18d),Public score identical to the single model
+Jensen correction + hard zero cut-off (teammate variant),LB public,-0.00011,dropped,CLAUDE.md (13 Nov teammate submissions),v27 vs v25a on the re-released data

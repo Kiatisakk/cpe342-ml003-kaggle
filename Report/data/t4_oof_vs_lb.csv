@@ -1,0 +1,9 @@
+recipe,short,oof_random,oof_hard,lb,source
+v25a  v3 .6 + EVA02-S .4,v25a,0.99247,0.98742,0.85787,work/t4_oof_vs_lb.py (re-run 26 Nov); LB from CLAUDE.md
+v26  equal 3 + EffNetV2-S,v26,0.99153,0.98689,0.85630,same
+v26c  colour-aug EVA02-S .2,v26c,0.99176,0.98818,0.85733,same
+v28  + ConvNeXt-S DINOv3,v28,0.99292,0.98901,0.85906,same
+v30  equal 4 (Base 2 folds),v30,0.99320,0.98994,0.86169,same
+v31  fine-tuned .7 + frozen .3,v31,0.99326,0.98955,0.86340,same
+v32  fine-tuned .5 + frozen .5,v32,0.99299,0.99048,0.86430,same
+v37n  5 fine-tuned + frozen-4 (no EM),v37n,0.99273,0.98961,0.86494,same

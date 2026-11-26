@@ -1,0 +1,51 @@
+file,day,order,lb,status,milestone,note,source
+v25a,12,1,0.85787,kept,v25a realigned,ConvNeXt-T + EVA02-S after data re-release; realigned by file name,CLAUDE.md LB log
+v26_eq3effv2,12,2,0.85630,dropped,,equal weight + EffNetV2-S,CLAUDE.md LB log
+v26_coloraug,13,1,0.85733,dropped,,wider colour augmentation (EVA02-S),CLAUDE.md LB log
+v28,13,2,0.85906,kept,v28 +ConvNeXt-S,.4 v3 + .4 EVA02 + .2 ConvNeXt-S DINOv3,CLAUDE.md LB log
+v30,14,1,0.86169,kept,v30 +ConvNeXt-B,equal 4 fine-tuned models,CLAUDE.md LB log
+v31,14,2,0.86340,kept,,frozen heads 30%,CLAUDE.md LB log
+v32,14,3,0.86430,kept,v32 frozen 50%,frozen heads 50%,CLAUDE.md LB log
+v33_em_half,14,4,0.86669,rule_excluded,,EM prior a=.5,CLAUDE.md LB log
+v34_em_full,14,5,0.86750,rule_excluded,v33/v34 EM prior,EM prior a=1,CLAUDE.md LB log
+v36_em,15,1,0.86805,rule_excluded,,frozen-4 + EM,CLAUDE.md LB log
+v37_em,15,2,0.86837,rule_excluded,v37 EM,ConvNeXt-L as 5th model + EM,CLAUDE.md LB log
+v40_em150,15,3,0.86643,rule_excluded,,EM exponent 1.5,CLAUDE.md LB log
+v41_knn,15,4,0.86760,rule_excluded,,kNN smoothing + EM,CLAUDE.md LB log
+v37n_noEM,15,5,0.86494,dropped,v37n no EM,v37 without EM prior (fallback),CLAUDE.md LB log
+v56_em,16,1,0.86921,rule_excluded,,full-train L + EM,CLAUDE.md LB log
+v58e_em,16,2,0.86920,rule_excluded,,+DINOv2-L as 6th model,CLAUDE.md LB log
+v58f_em,16,3,0.86929,rule_excluded,,+Base and Large full-train,CLAUDE.md LB log
+v59r3_em,16,4,0.86923,rule_excluded,,reduced FT set,CLAUDE.md LB log
+v59r3_noMLP_em,16,5,0.86925,rule_excluded,,without concat MLP head,CLAUDE.md LB log
+v72a_em,17,1,0.86997,rule_excluded,,6 FT + ViT-7B head + EM,CLAUDE.md LB log
+v73a_em,17,2,0.87016,rule_excluded,,7B share .4,CLAUDE.md LB log
+v74b_em,17,3,0.87046,rule_excluded,,7B share .7,CLAUDE.md LB log
+v74b_clean,17,4,0.86812,kept,v74b_clean,first clean file with 7B head,CLAUDE.md LB log
+v76a_em,17,5,0.87012,rule_excluded,,FT share .4,CLAUDE.md LB log
+v77b_em,18,1,0.87060,rule_excluded,,7B layer-75% head,CLAUDE.md LB log
+v77a_em,18,2,0.87038,rule_excluded,,7B s10+l50+l75,CLAUDE.md LB log
+v78a_em,18,3,0.87064,rule_excluded,,l75 share .85,CLAUDE.md LB log
+v78a_clean,18,4,0.86793,dropped,,v78a without EM,CLAUDE.md LB log
+v78b_clean,18,5,0.86813,dropped,,v78b without EM,CLAUDE.md LB log
+v79a_clean,19,1,0.87028,kept,v79a LoRA 7B,LoRA .5 + clean blend,CLAUDE.md LB log
+v79b_clean,19,2,0.87104,kept,v79b,LoRA .7,CLAUDE.md LB log
+v79b_em,19,3,0.85993,rule_excluded,,EM on the LoRA blend,CLAUDE.md LB log
+v79c_clean,19,4,0.87109,kept,v79c LoRA .85,LoRA .85,CLAUDE.md LB log
+v79d_clean,19,5,0.87074,dropped,,LoRA alone,CLAUDE.md LB log
+v80a_clean,20,1,0.87087,dropped,,2 LoRA seeds,CLAUDE.md LB log
+v82a_prior,20,2,0.87224,dropped,,train prior a=.5,CLAUDE.md LB log
+v82b_prior,20,3,0.87300,kept,v82b train prior,train prior a=1 on v80a,CLAUDE.md LB log
+v83_lora90,20,4,0.87298,dropped,,LoRA weight .9,CLAUDE.md LB log
+v81b_prior,20,5,0.87307,kept,v81b train prior,train prior a=1 on v79c,CLAUDE.md LB log
+v84a_prior,21,1,0.87294,dropped,,multi-scale TTA,CLAUDE.md LB log
+v85a_soup,21,2,0.87346,kept,v85a soup,exact LoRA soup + refit head,CLAUDE.md LB log
+v85b_soup3,21,3,0.87326,dropped,,third adapter in soup,CLAUDE.md LB log
+v86a_2view,21,4,0.87335,dropped,,2-view refit head,CLAUDE.md LB log
+v86b_l75la,21,5,0.87219,dropped,,logit-adjusted training,CLAUDE.md LB log
+v87b,22,1,0.87310,dropped,,soup + 2-view + l75la,CLAUDE.md LB log
+v87e,22,2,0.87336,dropped,,v85a + 2115-row T5,CLAUDE.md LB log
+v87a,22,3,0.87338,dropped,,soup + 2-view head,CLAUDE.md LB log
+v87c,22,4,0.87340,dropped,,+ raw l75,CLAUDE.md LB log
+v87d,22,5,0.87342,dropped,,v74b base blend,CLAUDE.md LB log
+v90f,24,1,0.87351,kept,v90f final,temperature + entropy pooling + multi-depth,CLAUDE.md snapshot 24 Nov / SPEC.md

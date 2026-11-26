@@ -1,0 +1,48 @@
+\appendix
+\section{Appendix: Section-to-Notebook Map}
+\label{sec:appendix}
+
+\paragraph{Reproducibility map.} Every task has a final-model notebook and an EDA notebook in the submission repository. Running a final-model notebook writes \texttt{taskN/taskN\_predictions.csv}; \texttt{combine\_submission.py} assembles the five files into \texttt{submission.csv} after checking that the ids run from \texttt{ANS00001} to \texttt{ANS25889}.
+
+\begin{table}[H]\centering\small
+\caption{Report section, notebooks, output and figure source.}
+\label{tab:appendix-map}
+\begin{tabular}{@{}L{.11\linewidth}L{.29\linewidth}L{.23\linewidth}L{.26\linewidth}@{}}
+\toprule
+\textbf{Section} & \textbf{Notebooks} & \textbf{Output} & \textbf{Figures} \\
+\midrule
+Task 1 & \texttt{task1/task1.ipynb}, \feat{task1_eda.ipynb} & \feat{task1_predictions.csv} & teammate's EDA figures; operating-point and identity figures from the local pipeline \\
+Task 2 & \texttt{task2/task2.ipynb}, \feat{task2_eda.ipynb} & \feat{task2_predictions.csv} & \feat{scripts/gen_figs_t2.py} \\
+Task 3 & \texttt{task3/task3.ipynb}, \feat{task3_eda.ipynb} & \feat{task3_predictions.csv} & \feat{scripts/gen_figs_t3.py} \\
+Task 4 & \texttt{task4/task4.ipynb} (GPU stage needs an A100 and a Hugging Face token), \feat{task4_eda.ipynb} & \feat{task4_predictions.csv} & \feat{scripts/gen_figs_t4.py} \\
+Task 5 & \texttt{task5/task5.ipynb}, \feat{task5_eda.ipynb} & \feat{task5_predictions.csv} & \feat{scripts/gen_figs_t5.py} \\
+Decision logs & none & none & \feat{scripts/gen_decision_logs.py} from \feat{data/decision_log_tN.csv} \\
+Final file & \feat{combine_submission.py} & \texttt{submission.csv} (\feat{sub_v90f_entropy_dualhead_md.csv}, public 0.87351) & none \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Build instructions.} The report needs XeLaTeX (tested with MiKTeX) and the Latin Modern fonts. From the \texttt{Report} directory, \texttt{latexmk -xelatex main.tex} builds the whole report; from a task folder, \texttt{latexmk -xelatex taskN.tex} builds one task alone (the task files use the \texttt{subfiles} package). Figure scripts need Python 3 with \texttt{numpy}, \texttt{pandas} and \texttt{matplotlib}, and read the competition data from \texttt{cpe342-kaggle-main/} (the Task 5 script also accepts the environment variable \texttt{T5\_TEST\_CSV}). The decision-log charts are regenerated with \texttt{python scripts/gen\_decision\_logs.py}.
+
+\section{Appendix: Glossary}
+\label{sec:glossary}
+
+\begin{table}[H]\centering\small
+\caption{Terms used in this report.}
+\label{tab:glossary}
+\begin{tabular}{@{}L{.24\linewidth}L{.70\linewidth}@{}}
+\toprule
+\textbf{Term} & \textbf{Meaning} \\
+\midrule
+OOF (out-of-fold) & Predictions for each training row made by a model that did not see that row; the basis of our validation scores. \\
+F-beta (F2, F3) & $F_\beta = (1+\beta^2)TP/((1+\beta^2)TP + \beta^2 FN + FP)$ for the positive class; $\beta>1$ weights recall more. Macro F1 averages F1 over classes. \\
+NMAE score & Competition score based on the mean absolute error normalised by the mean absolute target, so that higher is better; an all-zero prediction scores 0.5 under our formula. \\
+Hurdle model & Two-stage model for targets with many zeros: a classifier for $P(y>0)$ and a regressor for the amount given $y>0$. \\
+Scene-group CV & Cross-validation in which whole clusters of near-duplicate screenshots are held out together, so a fold measures generalisation to unseen scenes. \\
+Model soup & Averaging the weights of several fine-tuned models into one model; for LoRA adapters the product of the factors is averaged exactly. \\
+Train-prior logit adjustment & Adding $-\log\pi_c$ to the class logits, with $\pi_c$ the class frequencies in the training set, which treats all classes equally as macro F1 does. \\
+Robust $z$-score & Distance from the median in units of $1.4826\times$MAD, which is not distorted by the outliers it looks for. \\
+ECDF rank alignment & Mapping each model's scores through its own OOF empirical distribution function so that models can be blended on a common 0 to 1 scale. \\
+\bottomrule
+\end{tabular}
+\end{table}

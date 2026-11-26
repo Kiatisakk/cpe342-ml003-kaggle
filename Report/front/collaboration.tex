@@ -1,0 +1,31 @@
+\section{Team Collaboration}
+\label{sec:collaboration}
+
+\paragraph{Roles.} Table~\ref{tab:collab-roles} is to be completed by the team; the text below it uses only facts recorded in the project logs.
+
+\begin{table}[H]\centering\small
+\caption{Team roles (to be completed by the team).}
+\label{tab:collab-roles}
+\begin{tabular}{@{}L{.22\linewidth}L{.14\linewidth}L{.22\linewidth}L{.34\linewidth}@{}}
+\toprule
+\textbf{Name} & \textbf{Student ID} & \textbf{Main tasks} & \textbf{Contributions} \\
+\midrule
+\todo{name} & \todo{ID} & \todo{tasks} & \todo{contribution} \\
+\todo{name} & \todo{ID} & \todo{tasks} & \todo{contribution} \\
+\todo{name} & \todo{ID} & \todo{tasks} & \todo{contribution} \\
+\todo{name} & \todo{ID} & \todo{tasks} & \todo{contribution} \\
+\todo{name} & \todo{ID} & \todo{tasks} & \todo{contribution} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{What the logs show.} Several teammates ran long GPU jobs on their own Kaggle and Colab accounts so that we could use more than one account's quota: for example the EVA02-B fine-tune, the third fold of the ConvNeXt-B run, a DINOv2-L fold, frozen-feature extraction kernels, and a WiSE-FT experiment. A teammate wrote the first draft of the Task 1 report (pull request \#1 of the submission repository), which set the structure that this report follows for all five tasks. Questions about the rules were routed to the TA through one teammate, and the answers (15 and 16 November) shaped the final submission.
+
+\paragraph{Key takeaways from teamwork.}
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item \textbf{Coordinate scarce compute.} GPU quota is per account, and some notebooks need credentials that only a UI session has (for example gated DINOv3 weights). Agreeing who runs which job avoided idle sessions and duplicated runs.
+\item \textbf{Keep one canonical log.} A single running file with every submission, its change and its score let any teammate see what had been tried and prevented repeating failed experiments.
+\item \textbf{Change one thing per leaderboard probe.} Each probe changed exactly one task column, so the score difference could be attributed to that change. This is also how we measured the weight of each task.
+\item \textbf{Route rule questions through one person.} One channel to the TA kept the questions precise and the answers consistent, and the team could check every file against the same ruling.
+\item \textbf{Write down failures.} Dropped experiments (the failed-experiment section of each task) saved time later and are part of the result.
+\end{itemize}
