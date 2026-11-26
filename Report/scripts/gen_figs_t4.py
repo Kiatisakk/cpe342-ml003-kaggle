@@ -505,3 +505,47 @@ a.legend(loc="upper left", fontsize=7.8)
 print("fold0: conf<.6 share", (conf < .6).mean(), " errors with conf>.9:", int((err & (conf > .9)).sum()), " errors", int(err.sum()))
 fig.tight_layout()
 save(fig, "fig_t4_confusion.png")
+
+
+# ---- 15. example train images of every scene fold (research folds: SigLIP2 k-means, sig8, SGKF) -------------
+# Selection is deterministic (seed 11) and saved to data/t4_scene_fold_samples.csv so the figure can be redrawn
+# from the file list alone. Row order of the cache equals train.csv (checked below).
+assert (ys == tr.label.values).all()
+rngs = np.random.RandomState(11)
+rows_out = []
+for f in range(5):
+    for k in range(K):
+        gs_ = sorted(set(grp[(fold == f) & (ys == k)]))
+        order = rngs.permutation(len(gs_))
+        chosen = [gs_[i] for i in order][:2]
+        for j in range(2):
+            g = chosen[j % len(chosen)]
+            idx = np.where((grp == g) & (fold == f) & (ys == k))[0]
+            if len(chosen) == 1 and j == 1:      # only one scene group in the cell: take a second, different image
+                idx = np.setdiff1d(idx, [rows_out[-1]["row"]])
+            p = int(rngs.choice(idx))
+            rows_out.append(dict(fold=f, label=k, class_name=NAMES[k], group=int(g), file_name=tr.file_name[p], row=p))
+S15 = pd.DataFrame(rows_out)
+S15.drop(columns="row").to_csv(os.path.join(DD, "t4_scene_fold_samples.csv"), index=False)
+nfold = np.bincount(fold, minlength=5)
+fig = plt.figure(figsize=(10.2, 3.45))
+gsp = fig.add_gridspec(5, K * 2, left=.105, right=.995, top=.915, bottom=.01, wspace=.035, hspace=.04)
+for f in range(5):
+    for k in range(K):
+        for j in range(2):
+            a = fig.add_subplot(gsp[f, 2 * k + j])
+            fn = S15[(S15.fold == f) & (S15.label == k)].file_name.iloc[j]
+            a.imshow(Image.open(os.path.join(DATA, "train", fn)).convert("RGB"))
+            a.set_xticks([]); a.set_yticks([])
+            for s in a.spines.values():
+                s.set_edgecolor(T4C if f == 0 else AXIS); s.set_linewidth(1.4 if f == 0 else .6)
+            if f == 0 and j == 0:
+                a.annotate(NAMES[k], (1.0, 1.08), xycoords="axes fraction", ha="center", va="bottom", fontsize=8.8, color=INK)
+            if k == 0 and j == 0:
+                a.annotate(f"fold {f}\n({nfold[f]:,} images)", (-0.1, .5), xycoords="axes fraction", ha="right", va="center",
+                           fontsize=8, color=T4C if f == 0 else INK)
+fp = os.path.join(OUT, "fig_t4_scene_fold_samples.png")
+fig.savefig(fp, dpi=200)          # photographic content: 200 dpi and a 256-colour palette keep the PNG under 2 MB
+plt.close(fig)
+Image.open(fp).convert("RGB").quantize(256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(fp, optimize=True)
+print("wrote fig_t4_scene_fold_samples.png", os.path.getsize(fp) // 1024, "KB")

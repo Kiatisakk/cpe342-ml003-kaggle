@@ -56,7 +56,7 @@ Figure~\ref{fig:t4-samples} shows that the screenshots are small, noisy and vari
 \begin{figure}[H]
 \centering
 \includegraphics[width=.92\linewidth,keepaspectratio]{fig_t4_cv_gap.png}
-\caption{Macro F1 of a linear head on frozen features under random 5-fold CV (grey) and scene-group CV (violet; k-means with 8 clusters per title on frozen features, whole clusters held out). The head variants differ slightly in their views (the random-CV heads used four train views, the scene-group heads two), so gaps are indicative. Every family loses 5--10 points once whole scenes are held out.}
+\caption{Macro F1 of a linear head on frozen features under random 5-fold CV (grey) and scene-group CV (violet; k-means with 8 clusters per title on frozen SigLIP2 features, whole clusters held out). The head variants differ slightly in their views (the random-CV heads used four train views, the scene-group heads two), so gaps are indicative. Every family loses 5--10 points once whole scenes are held out.}
 \label{fig:t4-cvgap}
 \end{figure}
 
@@ -69,6 +69,7 @@ Figure~\ref{fig:t4-balance}. About 4:1 class imbalance under macro F1 & Class we
 Figure~\ref{fig:t4-samples}. Small, noisy, rotated frames with side HUD & Widescreen $224\times416$ input; random-crop, flip and photometric jitter; large pretrained backbones. \\
 Figure~\ref{fig:t4-appearance}. Brightness and saturation overlap across titles & No hand-made colour features; photometric jitter only, so the model cannot lean on lighting. \\
 Figure~\ref{fig:t4-neardup}. Near-duplicate scenes in train & Scene-grouped stratified folds built from train-only embeddings. \\
+Figure~\ref{fig:t4-scene-fold-samples}. Each scene fold holds whole scenes of every title & Scene fold 0 stands in for new scenes. \\
 Figure~\ref{fig:t4-cvgap}. Random CV overstates every family by 5--10 points & Use scene fold 0 for model choice, depth cut, weights and temperature calibration. \\
 \end{evidencetable}
 
@@ -76,23 +77,30 @@ Figure~\ref{fig:t4-cvgap}. Random CV overstates every family by 5--10 points & U
 
 \paragraph{Augmentation and class weights.} Training uses a random resized crop (area 0.5--1.0, aspect ratio varied by $\pm15\%$), a horizontal flip with probability 0.5, and brightness, contrast and saturation factors drawn from 0.8--1.2. The loss is cross-entropy with label smoothing 0.1 and class weights $\propto 1/\sqrt{n_k}$ (normalised to mean 1).
 
-\paragraph{Scene-grouped folds.} We embed all training images with the frozen ViT-7B (block 30), L2-normalise the embeddings, run k-means with 8 clusters inside each title (40 scene groups), and split the groups with a 5-fold \texttt{StratifiedGroupKFold}. Fold 0 holds 5,113 images from scenes the model never trains on. It is the validation set for every model-selection choice below and the data on which the calibration temperatures are fitted. Nothing in this procedure uses test images.
+\paragraph{Scene-grouped folds.} The recipe is the same in research and in the final notebook: embed all training images with a frozen backbone, L2-normalise the embeddings, run k-means with 8 clusters inside each title (40 scene groups), and split the groups with a class-balanced 5-fold \texttt{StratifiedGroupKFold}. During research the clusters were built from frozen \textbf{SigLIP2} embeddings (``sig8''; a 30-cluster variant is ``sig30''), and every figure and number in this report that mentions scene folds, fold 0 or scene-group CV uses these research folds. The final submission notebook (\texttt{task4.ipynb}) rebuilds the folds from frozen \textbf{DINOv3 ViT-7B block-30} embeddings with the same procedure, so that it is self-contained. Fold 0 holds 5,113 images from scenes the model never trains on. It is the validation set for every model-selection choice below and the data on which the calibration temperatures are fitted. Nothing in this procedure uses test images.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.4\textheight,keepaspectratio]{fig_t4_scene_clusters.png}
-\caption{The eight scene clusters of one title (FiveN), three random images each. The title of each panel gives the cluster size and the scene fold it was assigned to; the violet frames mark clusters of fold 0, the validation fold. Images in one cluster resemble each other in layout, viewpoint and colour, so a random split would put near-copies of the same scene in both training and validation.}
+\caption{The eight scene clusters of one title (FiveN), three random images each. The clusters are the SigLIP2 research clusters (sig8). The title of each panel gives the cluster size and the scene fold it was assigned to; the violet frames mark clusters of fold 0, the validation fold. Images in one cluster resemble each other in layout, viewpoint and colour, so a random split would put near-copies of the same scene in both training and validation.}
 \label{fig:t4-scene-clusters}
 \end{figure}
 
 \begin{figure}[H]
 \centering
+\includegraphics[width=\linewidth,keepaspectratio]{fig_t4_scene_fold_samples.png}
+\caption{Training images of every scene fold (rows, with the number of images) and title (columns), two per cell, drawn with a fixed random seed from different scene clusters where the fold holds more than one for that title (a single cluster otherwise). These are the SigLIP2 research folds (sig8). Fold 0, the validation fold, is outlined in violet. Inside a row the images of one title belong to a few scenes that no other fold contains; across rows the same title looks different.}
+\label{fig:t4-scene-fold-samples}
+\end{figure}
+
+\begin{figure}[H]
+\centering
 \includegraphics[width=\linewidth,height=0.3\textheight,keepaspectratio]{fig_t4_scene_folds.png}
-\caption{(a) Cosine similarity of every training image to its nearest other training image, measured on frozen C-RADIOv3-H features: the median is 0.75 and one image in four has no neighbour above 0.66 (the cut that defines our ``hard rows''). (b) Class composition of the five scene folds. Whole clusters go to one fold, and the stratified group split keeps every title in every fold.}
+\caption{(a) Cosine similarity of every training image to its nearest other training image, measured on frozen C-RADIOv3-H features: the median is 0.75 and one image in four has no neighbour above 0.66 (the cut that defines our ``hard rows''). (b) Class composition of the five scene folds (SigLIP2 research folds). Whole clusters go to one fold, and the stratified group split keeps every title in every fold.}
 \label{fig:t4-scene-folds}
 \end{figure}
 
-Figure~\ref{fig:t4-scene-clusters} shows what a cluster is: not a class and not a single image, but a family of near-duplicate frames from one map. Because one title is split into only eight such families, holding one out removes a visible part of the title's appearance, which is the situation a model meets on new content. With a strong backbone the redundancy is large (Figure~\ref{fig:t4-scene-folds}a: median nearest-neighbour cosine 0.75, against 0.63 for the crude thumbnail descriptor of Figure~\ref{fig:t4-neardup}), which is why a random fold overstates every model. The five scene folds are uneven in size (4,898 to 7,418 images, Figure~\ref{fig:t4-scene-folds}b) because clusters are indivisible; fold 0 was chosen as the validation fold and kept fixed so that all comparisons use the same 5,113 images. We use two further views of the same idea in the evaluation: a finer split with 30 clusters per title (``sig30'') and a three-fold version (``SGKF'') whose folds also balance the titles; they rank models consistently, and they are used only to compare frozen heads and fine-tuned proxies, never the test set.
+Figure~\ref{fig:t4-scene-fold-samples} shows what the folds contain: each fold is made of whole scenes, so a title in fold 0 appears in training only through scenes that look different (other maps, viewpoints, colour casts), and every title is present in every fold. We therefore treat a score on fold 0 as a score on new scenes. Figure~\ref{fig:t4-scene-clusters} shows what a cluster is: not a class and not a single image, but a family of near-duplicate frames from one map. Because one title is split into only eight such families, holding one out removes a visible part of the title's appearance, which is the situation a model meets on new content. With a strong backbone the redundancy is large (Figure~\ref{fig:t4-scene-folds}a: median nearest-neighbour cosine 0.75, against 0.63 for the crude thumbnail descriptor of Figure~\ref{fig:t4-neardup}), which is why a random fold overstates every model. The five scene folds are uneven in size (4,898 to 7,418 images, Figure~\ref{fig:t4-scene-folds}b) because clusters are indivisible; fold 0 was chosen as the validation fold and kept fixed so that all comparisons use the same 5,113 images. We use two further views of the same idea in the evaluation: a finer split with 30 clusters per title (``sig30'') and a three-fold version (``SGKF'') whose folds also balance the titles; they rank models consistently, and they are used only to compare frozen heads and fine-tuned proxies, never the test set.
 
 \subsubsection{Model Design}
 \label{sec:t4-design}
@@ -254,10 +262,10 @@ ConvNeXt-L DINOv3 (Kaggle) & 0.9870 & --- & no & Colab run (batch 32) was better
 ConvNeXt-L DINOv3 (Colab) & 0.9917 & --- & yes & best single random-OOF model; full-train refit used \\
 EVA02-S & 0.9877 & --- & no & on the 21031 shared rows; B is better \\
 EVA02-B & 0.9889 & --- & yes & 3 folds (.9900 on fold 2) \\
-EVA02-L (full-train only) & --- & --- & yes & no OOF; closest to frozen heads on test \\
+EVA02-L (full-train only) & --- & --- & yes & no OOF (full-train refit only) \\
 EffNetV2-S & 0.9732 & --- & no & blend weight 0 \\
 DINOv2-L (fold 0 only) & 0.9880 & --- & no & one fold; 6th model moved LB by -0.00001 \\
-DINOv3 ViT-L (full-train only) & --- & --- & yes & no OOF; agrees most with frozen heads \\
+DINOv3 ViT-L (full-train only) & --- & --- & yes & no OOF (full-train refit only) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -359,7 +367,7 @@ kNN smoothing of predictions & F1 0.9697 $\to$ 0.9742 & $-0.00077$ & wrong \\
 
 \subsubsection{Insights from Model Behaviour}
 
-\paragraph{Where the model errs.} Before the prior correction, 22 of the 41 errors counted for the single LoRA model on fold 0 (Table~\ref{tab:t4-fold0} gives 42 for the final training run) were FiveN or Free Fried images predicted as 7-11 Knights, the largest training class (prior 0.394). The model had learned the training class mix. The uniform-prior adjustment removes the bias directly: errors of the soup with refit head fell from 30 to 21 on fold 0 (Figure~\ref{fig:t4-lora-soup}a), and the public LB rose by 0.0020 when the same adjustment was added to the LoRA blend. No fold-0 error had a confidence above 0.9.
+\paragraph{Where the model errs.} Before the prior correction, 22 of the 41 errors counted for the single LoRA model on fold 0 (Table~\ref{tab:t4-fold0} gives 42 for the final training run) were FiveN or Free Fried images predicted as 7-11 Knights, the largest training class (prior 0.394). The model had learned the training class mix. The uniform-prior adjustment removes the bias directly: errors of the soup with refit head fell from 30 to 21 on fold 0 (Figure~\ref{fig:t4-lora-soup}a), and the public LB rose by 0.0020 when the same adjustment was added to the LoRA blend. No fold-0 error had a confidence above 0.9. The original screenshots are only $230\times120$ pixels and we upsample them by about 1.8, so fine detail such as HUD text is limited.
 
 \begin{figure}[H]
 \centering
@@ -370,8 +378,6 @@ kNN smoothing of predictions & F1 0.9697 $\to$ 0.9742 & $-0.00077$ & wrong \\
 
 Figure~\ref{fig:t4-confusion} shows the errors that are left after the prior. They are few and spread out: eight FiveN images are called Roblock, four Free Fried images are called PUBE, four images (one FiveN, three Free Fried) go to 7-11 Knights, three FiveN images are called PUBE, and one is called Free Fried. Roblock and 7-11 Knights themselves are almost never wrong, and PUBE is wrong once. The prior moves errors between classes in the direction expected from the class sizes (7-11 Knights receives 16 wrong predictions before and 4 after) and shifts some to Roblock, the smallest title, which is the price of treating the titles equally. This is what the macro F1 asks for.
 
-\paragraph{The test set is harder than fold 0 (diagnostic, not used for any setting).} After the final models were fixed, we looked at how the LoRA model behaves on the competition images, only to understand the gap between the 0.995 fold-0 score and the leaderboard-implied 0.98. For the single LoRA model the confidence is below 0.6 on 14.9\% of the test images against 2.0\% on fold 0, and its predicted class mix puts 14\% of the images in 7-11 Knights where the training set has 39.4\%. We read this as test scenes that are less like the training scenes, together with a different class mix. We did \emph{not} use either number to set a prior, a weight or a threshold: the prior that is applied is the training-set frequency, a fixed vector, and the EM estimate of the test mix that would have used it was ruled out by the TA. Original screenshots are only $230\times120$ pixels and we upsample them by about 1.8, so fine detail such as HUD text is limited.
-
 \paragraph{Intermediate depth beats the last block.} A linear head on the 75\%-depth features of the ViT-7B reaches 0.9834 on fold 0 and a head on the last block reaches 0.9749 (Table~\ref{tab:t4-fold0}); under random folds the gap is smaller (0.9862 against 0.9782). Intermediate features carry more transferable scene content than the final block, and the scene folds make that visible while random folds do not. Fine-tuning adapters (LoRA) on top of the 75\% features then lifts fold 0 to 0.9912 for a single model.
 
 \paragraph{Fine-tuning and frozen features are complementary.} On scene folds a fine-tuned ConvNeXt-S beat every frozen head, yet blending the two at about 50/50 beat either alone (0.9697 against 0.9635 for the fine-tuned model alone in our proxy study). This is why the final recipe keeps the joint linear probe and the frozen heads inside the ensemble even though the LoRA soup carries 77\% of the base weight.
@@ -380,7 +386,7 @@ Figure~\ref{fig:t4-confusion} shows the errors that are left after the prior. Th
 
 \subsubsection{Common Mistakes and Failed Experiments}
 
-\paragraph{Test-derived class prior (rule issue).} After the data re-release the predicted test mix differed strongly from the training mix. We estimated the test class prior with EM on our own test predictions and corrected the probabilities; this was worth $+0.0032$ on the public LB. The TA ruled on 16 November that estimating the class mix from test predictions is the same as pseudo-labelling and is \textbf{not allowed}, while a prior computed from train labels and applied as a fixed value is allowed. We replaced the EM prior by the uniform train prior (exponent $a=1$, justified by macro F1, not tuned), which scored even higher once the LoRA model was in (+0.0020 over the same file without a prior; the EM prior on the LoRA blend scored $-0.0111$). Every EM file is rule-excluded in Figure~\ref{fig:t4-decision-log}.
+\paragraph{Test-derived class prior (rule issue).} After the data re-release we estimated the test class prior with EM on our own test predictions and corrected the probabilities; this was worth $+0.0032$ on the public LB. The TA ruled on 16 November that estimating the class mix from test predictions is the same as pseudo-labelling and is \textbf{not allowed}, while a prior computed from train labels and applied as a fixed value is allowed. We replaced the EM prior by the uniform train prior (exponent $a=1$, justified by macro F1, not tuned), which scored even higher once the LoRA model was in (+0.0020 over the same file without a prior; the EM prior on the LoRA blend scored $-0.0111$). Every EM file is rule-excluded in Figure~\ref{fig:t4-decision-log}.
 
 \paragraph{Choices driven by test statistics.} Early frozen heads were trained with extra darkened and saturated copies of the training images, because we had compared brightness and saturation between train and test images. The TA ruled that comparing train and test image statistics to choose augmentation or validation is a leak. The final heads use plain and flipped views only, and the scene-grouped validation is now justified by training-set evidence only (Figures~\ref{fig:t4-neardup} and \ref{fig:t4-cvgap}). The wider colour augmentation that we tried on the same suspicion scored $-0.00054$.
 
@@ -396,12 +402,12 @@ Figure~\ref{fig:t4-confusion} shows the errors that are left after the prior. Th
 \toprule
 \textbf{Experiment} & \textbf{Measured effect} & \textbf{Lesson} \\
 \midrule
-Wider colour augmentation (gamma, brightness 0.55--1.25, saturation 0.5--2.0) on EVA02-S & OOF 0.98334; blend weight 0.2 gave $-0.00054$ on the leaderboard & Photometric augmentation does not close the gap to the new test scenes; the gap is in content, not colour. \\
+Wider colour augmentation (gamma, brightness 0.55--1.25, saturation 0.5--2.0) on EVA02-S & OOF 0.98334; blend weight 0.2 gave $-0.00054$ on the leaderboard & Photometric augmentation did not help on the leaderboard. \\
 EffNetV2-S in an equal-weight blend & OOF 0.9732; blend $-0.00157$ (nested weight 0) & A weak member hurts an equal-weight blend even when OOF ranks it last. \\
 ConvNeXt-S ``in22k'' (wrong weights loaded) & OOF 0.9754; 3-way nested blend 0.99146 against 0.99170 for the 2-way blend & Kernels pushed from the command line cannot read secrets, so the gated DINOv3 weights silently fell back; always print which checkpoint was loaded. \\
-WiSE-FT interpolation of the ConvNeXt-S fine-tune & OOF 0.9401 / 0.9738 / 0.9823 for $\alpha$ = 0.3 / 0.5 / 0.7; test agreement with the frozen heads 0.85--0.88, not higher than plain fine-tuning (0.88); not submitted & The linear-probe end of the path is a weak ConvNeXt-S probe, so interpolation does not move predictions toward robust features. \\
+WiSE-FT interpolation of the ConvNeXt-S fine-tune & OOF 0.9401 / 0.9738 / 0.9823 for $\alpha$ = 0.3 / 0.5 / 0.7, all below the plain fine-tune (0.9860); not submitted & The linear-probe end of the path is a weak ConvNeXt-S probe, so interpolation gives no gain. \\
 Random crop (area 25--100\%) plus CutMix on scene folds (ConvNeXt-S) & scene-CV F1 0.9559 against 0.9635 for the base recipe (folds 0--2) & Strong spatial augmentation hurts when the object is a whole scene. \\
-Seed averaging: two LoRA seeds in one slot & $-0.00022$ & The seed variance on test is large, but averaging two seeds did not help the public score; one run is enough. \\
+Seed averaging: two LoRA seeds in one slot & $-0.00022$ & Averaging two seeds did not help the public score; one run is enough. \\
 More fine-tuned runs (DINOv2-L fold 0, full-train Base and Large) & $-0.00001$, $+0.00008$, $-0.00006$ for three different sets & The fine-tuned ensemble saturated at 4--5 slots. \\
 Concat-feature MLP head on four frozen backbones & Random OOF 0.9826 against 0.9632 for linear heads, no drop on hard rows; removing it changed the leaderboard by $+0.00002$ & Out-of-fold gains of a flexible head on frozen features did not transfer. \\
 Multi-depth LoRA as the main model (cut at 60\% or at 100\%) & Fold-0 errors 63 and 69 against 42 for the 75\% cut & The 75\% cut is the right layer; the others only add diversity (weight 0.04 each). \\
