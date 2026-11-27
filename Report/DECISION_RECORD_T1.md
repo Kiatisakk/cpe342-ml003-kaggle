@@ -39,7 +39,7 @@ Expanded Section 8 into three structured, domain-grounded engineering paragraphs
 
 ### B. Visual Layout & Figure Scaling Optimizations
 - **Figure 1 (`class_balance.png`):** Reduced maximum vertical allocation from `0.35\textheight` to `0.22\textheight` with proportional width constraint (`width=0.78\linewidth`). This significantly tightens vertical spacing and improves typography density.
-- **Figure 9 (`fig_t1_lps_identity.png`):** Scaled to `0.88\linewidth` to ensure consistent margin alignment with adjacent single-column figures.
+- **Figure 9 (`fig_t1_masking_gain.png`):** Decoupled the duplicate panel (a) (which previously reprinted the uniform distribution of ratio $r$ identical to Figure 5(a)). Cropped to display solely panel (b) (`fig_t1_masking_gain.png`, `width=0.62\linewidth`), focusing exclusively on the missingness-dependent OOF ROC-AUC masking gain and eliminating redundancy.
 
 ---
 
