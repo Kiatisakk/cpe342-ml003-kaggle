@@ -145,7 +145,7 @@ To handle label noise, we assume that the observed label $\tilde y$ equals the l
 \subsubsection{Evaluation and Results}
 \label{sec:t2-eval}
 
-The score is $\text{macro F1}=\frac14\sum_{k=0}^{3}\frac{2\,\text{TP}_k}{2\,\text{TP}_k+\text{FP}_k+\text{FN}_k}$. Table~\ref{tab:t2-results} lists the out-of-fold macro F1 of the baseline, each component, and the final prediction.
+The score is $\text{macro F1}=\frac14\sum_{k=0}^{3}\frac{2\,\text{TP}_k}{2\,\text{TP}_k+\text{FP}_k+\text{FN}_k}$. Table~\ref{tab:t2-results} lists the out-of-fold macro F1 of each component and of the final prediction. The tuned LightGBM baseline (0.7524) was measured on the first data release, so it appears in Table~\ref{tab:t2-failed} instead and is not compared with these numbers.
 
 \begin{table}[H]\centering\small
 \caption{Out-of-fold macro F1 on the re-released Task 2 data (5 folds, seed 42, no \texttt{player\_id}).}\label{tab:t2-results}
@@ -153,7 +153,6 @@ The score is $\text{macro F1}=\frac14\sum_{k=0}^{3}\frac{2\,\text{TP}_k}{2\,\tex
 \toprule
 \textbf{Model (new data)} & \textbf{OOF macro F1} & \textbf{Difference to EM-NB alone} \\
 \midrule
-Baseline (Tuned LightGBM) & 0.75240 & $-0.00526$ \\
 MLP (weight 0.05) & 0.75227 & $-0.00539$ \\
 Spline logistic regression (0.08) & 0.75468 & $-0.00298$ \\
 EM histogram Naive Bayes (0.87) & 0.75766 & reference \\
@@ -163,13 +162,13 @@ Blend 0.87 / 0.08 / 0.05, \texttt{argmax} & 0.75798 & $+0.00032$ \\
 \end{tabular}
 \end{table}
 
-The Naive Bayes model alone reaches 0.75766 (per fold 0.7548--0.7617; three seeds 0.7577--0.7582). The two discriminative models are individually worse by 0.003--0.005 but make different mistakes, so the 0.87/0.08/0.05 blend adds 0.00032 over Naive Bayes alone, and the affine rule, which changes 2{,}056 of the 104{,}000 OOF predictions (1.98\%), adds a further 0.00028. The final pipeline reaches an OOF macro F1 of 0.75826 with high fold-to-fold stability (fold mean $0.7583 \pm 0.0026$). All numbers in this table come from the re-released data; the experiments of the failed-experiments table and the decision log are labelled ``first release'' or ``new data'' row by row, and the two releases must not be compared absolutely, because the rows were regenerated. The public leaderboard agrees in direction. On the first data release, replacing the plain Naive Bayes in Task~2 by the blend and the rule raised the public score from 0.71965 to 0.71999 (\texttt{sub\_v16b} $\to$ \texttt{sub\_v18a}), a gain of 0.00034 on the whole submission, or about 0.0017 of Task~2 macro F1 at a task weight of 0.2. The submission that this report describes, with the same Task~2 model, scored 0.87351 on the public leaderboard.
+The Naive Bayes model alone reaches 0.75766 (per fold 0.7548--0.7617; three seeds 0.7577--0.7582). The two discriminative models are individually worse by 0.003--0.005 but make different mistakes, so the 0.87/0.08/0.05 blend adds 0.00032 over Naive Bayes alone, and the affine rule, which changes 2{,}056 of the 104{,}000 OOF predictions (1.98\%), adds a further 0.00028. The final pipeline reaches an OOF macro F1 of 0.75826. All numbers in this table come from the re-released data; the experiments of the failed-experiments table and the decision log are labelled ``first release'' or ``new data'' row by row, and the two releases must not be compared absolutely, because the rows were regenerated. The public leaderboard agrees in direction. On the first data release, replacing the plain Naive Bayes in Task~2 by the blend and the rule raised the public score from 0.71965 to 0.71999 (\texttt{sub\_v16b} $\to$ \texttt{sub\_v18a}), a gain of 0.00034 on the whole submission, or about 0.0017 of Task~2 macro F1 at a task weight of 0.2. The submission that this report describes, with the same Task~2 model, scored 0.87351 on the public leaderboard.
 
 \paragraph{Decision log.} Figure~\ref{fig:t2-decision-log} lists every Task~2 experiment, with the metric each number measures. The rows are in \texttt{data/decision\_log\_t2.csv}.
 
-\begin{figure}[H]
+\begin{figure}[p]
 \centering
-\includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{decision_log_t2.pdf}
+\includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{decision_log_t2.pdf}
 \caption{Task 2 decision log: change in score (one panel per metric family) per experiment, kept versus dropped versus rule-excluded. Green = kept, grey = dropped, red hatched = excluded by the competition rules.}
 \label{fig:t2-decision-log}
 \end{figure}
