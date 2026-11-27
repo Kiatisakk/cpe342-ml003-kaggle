@@ -18,51 +18,70 @@ The training set has 104{,}000 rows and the test set 25{,}889. Each row has 32 f
 \subsubsection{EDA Findings}
 \label{sec:t3-eda}
 
-The target decides the model, so we studied it first: how many players spend nothing, who produces the money, which columns are linked exactly, and how well last month's spending predicts this month's.
+We first examined how many accounts spend nothing and how spending is distributed across segments. We then checked whether the spending columns could recover missing values and whether last month's spending could anchor the amount model.
 
-\paragraph{A zero-inflated, heavy-tailed target.} Figure~\ref{fig:t3-target} shows how many players pay and how much.
+\paragraph{A zero-inflated, heavy-tailed target.} The left panel of Figure~\ref{fig:t3-target} counts accounts with and without spending. The right panel shows the distribution of $\log_{10}$ spending among payers, with one curve per segment.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t3_target.png}
-\caption{(a) 48.1\% of the training accounts spend exactly zero. (b) Distribution of $\log_{10}$ spending among payers, one curve per segment; each segment sits at a different level.}
+\caption{(a) Accounts with and without spending. (b) Payer spending distributions by segment.}
 \label{fig:t3-target}
 \end{figure}
 
-\emph{What we see.} 50{,}049 of 104{,}000 accounts (48.1\%) spend nothing. Among payers the median is 2{,}314 THB, the mean is 20{,}235 THB and the maximum is 300{,}000, which looks like a cap. The four segments are separated almost cleanly on the log scale: payer medians are 229, 1{,}627, 2{,}855 and 58{,}618 THB for segments 0 to 3. A single regression curve would therefore have to model a spike at zero and a spread over four orders of magnitude at the same time. \emph{What we decided.} Use a two-stage \emph{hurdle} model: one model for whether a player pays and one for how much, and work on the logarithm of the amount.
+\emph{What we see.} 50{,}049 of 104{,}000 accounts (48.1\%) spend nothing. Among payers the median is 2{,}314 THB, the mean is 20{,}235 THB and the observed maximum is 300{,}000 THB. Payer medians rise from 229 to 1{,}627, 2{,}855 and 58{,}618 THB across segments 0 to 3. \emph{What we decided.} Use a two-stage \emph{hurdle} model to handle the point mass at zero separately from the wide distribution of positive amounts. The amount model works on the log scale.
 
-\paragraph{Who produces the money.} Figure~\ref{fig:t3-whales} compares shares of accounts and of spending by segment.
+\paragraph{Who produces the money.} The left panel of Figure~\ref{fig:t3-whales} compares each segment's share of accounts and total spending. The right panel shows the zero-spending rate within each segment. Accounts with missing segment labels make up 5.7\% of the training set and appear as a separate group.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t3_whales.png}
-\caption{(a) Share of accounts and of total spending by segment; ``missing'' marks the 5.7\% of rows without a segment. (b) Share of players with zero spending by segment.}
+\caption{(a) Account and spending shares by segment. (b) Zero-spending rates by segment.}
 \label{fig:t3-whales}
 \end{figure}
 
-\emph{What we see.} Segment 3 (whales) is 14.0\% of the accounts and 87.3\% of all money, with a mean of 65{,}358 THB against 74 THB for segment 0. Only 7.1\% of whales spend nothing, against 72.4\% of Casual players. Rows with a missing segment still carry 6.2\% of the spending. Because MAE weighs a baht equally everywhere, the whales dominate the metric. \emph{What we decided.} Segment is a key input, so we impute the missing segment with a classifier trained on the training rows, and we add the probability of being a whale as a feature.
+\emph{What we see.} Segment 3 (whales) accounts for 14.0\% of players and 87.3\% of total spending. Its mean is 65{,}358 THB, compared with 74 THB in segment 0. Only 7.1\% of whales spend nothing, compared with 72.4\% of Casual players. Rows with a missing segment account for another 6.2\% of spending. The spending shares motivate checking where absolute error concentrates in Figure~\ref{fig:t3-error}. \emph{What we decided.} Retain segment as a predictor, impute missing segments with a classifier and add \feat{p_whale}.
 
-\paragraph{Exact relations among the money columns.} We tested whether the columns \feat{historical_spending}, \feat{total_transactions}, \feat{avg_transaction_value}, \feat{purchases_on_discount} and \feat{discount_rate_used} are linked by exact identities (Figure~\ref{fig:t3-identities}).
+\paragraph{Algebraic relations among the money columns.} The left panel of Figure~\ref{fig:t3-identities} shows missing rates in five spending features before and after algebraic fill. The right panel checks whether transaction count times average transaction value reproduces observed \feat{historical_spending} on a sample of 20{,}000 complete rows. Both axes use $\log(1+x)$, and most points cluster around the equality line.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t3_identities.png}
-\caption{(a) Missing rate of the five money columns before and after the exact fill. (b) On 20{,}000 complete rows, \texttt{historical\_spending} lies on the line $y=x$ against \texttt{total\_transactions}~$\times$~\texttt{avg\_transaction\_value}.}
+\caption{(a) Missing rates before and after fill. (b) Observed vs.\ calculated historical spending.}
 \label{fig:t3-identities}
 \end{figure}
 
-\emph{What we see.} $\texttt{historical\_spending}=\texttt{total\_transactions}\times\texttt{avg\_transaction\_value}$ holds exactly on 99.0\% of complete rows and $\texttt{purchases\_on\_discount}=\texttt{total\_transactions}\times\texttt{discount\_rate\_used}$ on 100\%; the median error is zero. Each column is missing in about 5.8\% of the rows, so one missing value can often be recovered from the other two. \emph{What we decided.} Fill missing values with the exact identities before any modelling. Missing rates fall from 5.8\% to between 0.1\% and 0.44\%, and the fill uses no model, hence no leakage.
+\emph{What we see.} On complete rows, the transaction count times average transaction value matches \feat{historical_spending} to within 0.01 THB on 99.0\% of rows. Transaction count times discount rate matches \feat{purchases_on_discount} to within 0.01 purchases on 100.0\% of complete rows. The median absolute discrepancy is zero for both checks. \emph{What we decided.} Use these relations to fill missing values from the other observed columns in the same row before modelling. This reduces the five training missing rates from about 5.8\% to 0.10--0.44\%. The fill uses neither the spending target nor a fitted model.
 
-\paragraph{Last month predicts this month.} Figure~\ref{fig:t3-offset} relates \feat{prev_month_spending} to the target for payers.
+\paragraph{Last month predicts this month.} The left panel of Figure~\ref{fig:t3-offset} compares current and previous-month spending on the $\log(1+x)$ scale for training payers with a previous-month value available after algebraic fill. The dashed line marks equality. The right panel shows $\log y-\text{offset}$ by recorded segment, using the full offset rule including its fallbacks.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t3_offset.png}
-\caption{(a) Payers' $\log(1+y)$ against $\log(1+\texttt{prev\_month\_spending})$; the dashed line is $y=x$ and the flat edge at the top is the 300{,}000 cap. (b) The log-residual $\log y-\text{offset}$ by segment, with offset equal to $\log(1+\texttt{prev\_month\_spending})$.}
+\caption{(a) Current vs.\ previous-month spending. (b) Log residuals by segment.}
 \label{fig:t3-offset}
 \end{figure}
 
-\emph{What we see.} For the 94\% of payers with a previous-month value, $\log y$ and $\log(1+\text{prev})$ have a correlation of 0.982, and the points lie on a band of slope one that is parallel to $y=x$ but above it. The residual is tight inside each segment (robust standard deviation 0.27--0.34) but its centre moves with the segment, from +0.17 for Casual to +1.56 for whales, and it carries further steps from premium status, VIP tier and recency. So last month is a strong anchor but not the whole answer. \emph{What we decided.} Model the \emph{residual} of the log amount against that anchor. A shallow tree model then only has to learn the multiplicative factors, not the whole scale of spending. Where \feat{prev_month_spending} is missing, the offset falls back to $\log(1+\text{historical})-1.05$, and finally to the constant 6.5.
+\emph{What we see.} Of the 53{,}951 training payers, 50{,}826 (94.2\%) have a previous-month value. Among those payers, the correlation between $\log y$ and $\log(1+\text{prev})$ is 0.982. The residual is relatively tight within each recorded segment (robust standard deviation 0.27--0.34), while its median shifts from +0.17 for Casual players to +1.56 for whales. \emph{What we decided.} Model $\log y-\text{offset}$ so that the amount model learns how spending departs from the anchor. Table~\ref{tab:t3-offset-coverage} shows which offset each row uses after algebraic fill.
+
+\begin{table}[H]
+\centering\small
+\caption{Offset source after algebraic fill. The payer column uses training rows with $y>0$; the test column includes all accounts.}
+\label{tab:t3-offset-coverage}
+\begin{tabular}{@{}L{.43\linewidth}rrr@{}}
+\toprule
+\textbf{Offset source} & \textbf{Train payers} & \textbf{All train} & \textbf{All test} \\
+\midrule
+$\log(1+\text{previous-month spending})$ & 50{,}826 & 97{,}985 & 24{,}357 \\
+$\log(1+\text{historical spending})-1.05$ & 3{,}112 & 5{,}988 & 1{,}528 \\
+Constant 6.5 & 13 & 27 & 4 \\
+\midrule
+Total & 53{,}951 & 104{,}000 & 25{,}889 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Historical spending supplies the offset for 3{,}112 of the 3{,}125 training payers with no previous-month value. The constant is needed only when both spending fields are missing after the fill.
 
 \subsubsection{Data Preprocessing}
 
@@ -71,17 +90,19 @@ Table~\ref{tab:t3-evidence} links each figure to its decision, and the paragraph
 \begin{evidencetable}{EDA evidence and the pipeline decision it motivated (task 3).}{tab:t3-evidence}
 Figure~\ref{fig:t3-target}. 48\% zeros, payers across four orders of magnitude & Hurdle model: a payer probability $p$ and a payer-amount model on the log scale; point prediction chosen for MAE (Figure~\ref{fig:t3-qrule}). \\
 Figure~\ref{fig:t3-whales}. Whales are 14\% of rows and 87\% of money & Impute the missing segment with an XGBoost classifier and add $P(\text{whale})$; judge changes by their effect on whales. \\
-Figure~\ref{fig:t3-identities}. Exact products among five money columns & Iterative exact fill of the missing values, 5.8\% down to under 0.5\%. \\
-Figure~\ref{fig:t3-offset}. Payers follow last month on a unit-slope line & Predict 11 quantiles of $\log y-\text{offset}$ with a depth-4 CatBoost model; offset from \feat{prev_month_spending}. \\
+Figure~\ref{fig:t3-identities}. Products recover values for five money columns & Iterative algebraic fill reduces training missing rates from about 5.8\% to under 0.5\%. \\
+Figure~\ref{fig:t3-offset} and Table~\ref{tab:t3-offset-coverage}. Previous-month spending anchors the amount model; historical spending covers most missing anchors & Predict 11 quantiles of $\log y-\text{offset}$ with depth-4 CatBoost and use the same offset fallback order on train and test. \\
 \end{evidencetable}
 
-\paragraph{Exact fill.} Six rules fill a missing value from the other two in each identity: for example \feat{historical_spending} $=$ transactions $\times$ average value, transactions $=$ historical $/$ average value (only when the divisor is positive), and the analogous rules for the discount columns. Three passes let recovered values feed the next rule. The same function runs on train and test separately.
+\paragraph{Exact fill.} Six rules fill a missing value from the other two in each identity: for example \feat{historical_spending} $=$ transactions $\times$ average value, transactions $=$ historical $/$ average value (only when the divisor is positive), and the analogous rules for the discount columns. We run three passes. Each pass evaluates all six rules before filling any values, so values recovered in one pass can be used in the next. The same function runs on train and test separately.
 
-\paragraph{Derived features.} We add rates per day of account age (\feat{hist_per_day}, \feat{tx_per_day}), the expected monthly spend (\feat{avg_transaction_value} $\times$ \feat{purchase_frequency}), the ratios \feat{prev_vs_hist} and \feat{recency_ratio}, playtime per session, $\log(1+\cdot)$ of three money columns, and the number of missing values per row. The payer-amount model gets four more log-ratio features (previous minus historical, and so on).
+\paragraph{Derived features.} After the algebraic fill, we drop the target from the training inputs and add rates per day of account age (\feat{hist_per_day}, \feat{tx_per_day}), a monthly spending proxy (\feat{exp_monthly_spend} = \feat{avg_transaction_value} $\times$ \feat{purchase_frequency}), and \feat{prev_x_freq} (\feat{prev_month_spending} $\times$ \feat{purchase_frequency}). We also add \feat{prev_vs_hist}, \feat{recency_ratio}, \feat{play_per_session}, and $\log(1+x)$ versions of \feat{historical_spending}, \feat{prev_month_spending}, and \feat{avg_transaction_value}, flooring negative inputs at zero for the log transform. The feature \feat{n_missing} counts missing entries per row across the raw columns and the features just added. We compute this count before dropping \feat{player_id} from the model inputs and before imputing \feat{segment}.
 
-\paragraph{Segment imputer.} An XGBoost~\citep{xgboost} multiclass model (depth 6, learning rate 0.02, early stopping on a 10\% holdout of the rows with a segment) predicts the missing segments from all other features. Its holdout accuracy is 0.9292. For each row we keep the imputed segment, a flag marking imputation, and the predicted probability of segment 3. The imputer sees only training rows and no target.
+\paragraph{Segment imputer.} We fit one XGBoost~\citep{xgboost} multiclass classifier (depth 6, learning rate 0.02) before the outer folds, using the observed \feat{segment} as its target. We stratify the training rows with observed segments by segment, using 90\% to fit the classifier and 10\% for early stopping. Accuracy on that 10\% split is 92.92\%. The same classifier fills missing segments in train and test with the most probable class, sets \feat{seg_imputed} to 1 for those rows, and records the predicted probability of segment 3 in \feat{p_whale}. For rows with an observed segment, \feat{seg_imputed} is 0 and \feat{p_whale} indicates whether that segment is 3.
 
-\paragraph{Folds.} Five stratified folds with seed 42, stratified jointly on ``zero'' and the four quartiles of the positive amounts, so that every fold holds the same mix of non-payers and small, medium and large payers.
+\paragraph{Inputs for each stage.} The payer classifier uses 45 features. The payer-amount model uses 49, adding \feat{lprev_minus_lhist}, \feat{l_atv_x_freq}, \feat{l_hist_per_tx}, and \feat{l_hist_per_age} as log-derived features. Its target for positive spenders is $\log y-\text{offset}$, with the offset sources applied in the order shown in Table~\ref{tab:t3-offset-coverage}.
+
+\paragraph{Folds.} We use five shuffled stratified folds with seed 42. Zero-spending rows form one stratum, and the four quartiles of ranked positive spending form the other four. Stratification keeps the proportions of these groups similar across folds.
 
 \subsubsection{Model Design}
 \label{sec:t3-design}
@@ -90,12 +111,12 @@ Figure~\ref{fig:t3-offset}. Payers follow last month on a unit-slope line & Pred
 \[
 q=1-\frac{1}{2p}\in(0,\tfrac12],
 \]
-which is the lower half of the payer distribution, far below its mean. Figure~\ref{fig:t3-qrule}a draws the rule; Figure~\ref{fig:t3-qrule}b checks that $p$ can be trusted.
+which lies in the lower half of the payer distribution. Panel (a) of Figure~\ref{fig:t3-qrule} shows the rule. Panel (b) compares the mean predicted and observed payer rates across ten equal-width bins of out-of-fold probabilities. It shows bins with more than 50 accounts, with larger markers for larger bins. The plotted rates lie close to the equality line.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t3_qrule.png}
-\caption{(a) The payer quantile that minimises MAE as a function of $p=P(y>0\mid x)$; for $p\le0.5$ the best prediction is zero. (b) Reliability of the out-of-fold $p$ (10 bins; marker size is the number of rows): predicted and observed payer rates agree.}
+\caption{(a) MAE-optimal payer quantile. (b) Calibration of payer probabilities.}
 \label{fig:t3-qrule}
 \end{figure}
 
@@ -127,7 +148,7 @@ What this picture decides: the model must deliver (i) a calibrated $p$ and (ii) 
 \draw[flow] (dec) -- (out);
 \node[note,anchor=north] at (5.4,-8.5) {$p$ is averaged over seeds; the quantiles are averaged by geometric mean on the baht scale};
 \end{tikzpicture}
-\caption{Task 3 pipeline from raw features to predicted spending.}
+\caption{Two-stage pipeline for 30-day spending prediction.}
 \label{fig:t3-pipeline}
 \end{figure}
 
@@ -146,12 +167,12 @@ Point prediction & $q=\mathrm{clip}\bigl(1-1/(2p),0.02,0.50\bigr)$, linear inter
 
 \paragraph{Why these choices.} \emph{Depth 4.} The log-residual is a sum of a few multiplicative steps (premium, VIP tier, number of games, recency, month), which shallow symmetric trees represent well. Figure~\ref{fig:t3-sweep}a and the paragraph below give the sweep: CatBoost is flat from depth 3 to 6 and falls at depth 8, XGBoost \citep{xgboost} is lower at every depth, and LightGBM is lower again. \emph{Multi-quantile.} One model produces all 11 quantiles together with shared trees; the predicted quantiles are sorted afterwards to remove any crossing. \emph{Seeds.} The seed average costs compute only: ten seeds of each stage added 0.00006 over three of each.
 
-\paragraph{Model family and depth sweep.} All amount-model variants share the exact fill, the offset target, the 49 features, the five folds and the same stage-1 probabilities, so only the booster changes (Figure~\ref{fig:t3-sweep}a; one seed per point, data in \texttt{data/t3\_sweep.csv}).
+\paragraph{Model family and depth sweep.} Panel (a) of Figure~\ref{fig:t3-sweep} compares CatBoost, XGBoost, and LightGBM with the offset target and includes a LightGBM run using the unadjusted target. The runs share the exact fill, 49 features, five folds, and stage-1 probabilities. Each point uses one seed. The experiment IDs and scores are in \texttt{data/t3\_sweep.csv}.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t3_sweep.png}
-\caption{(a) OOF NMAE of the amount model by family and depth (CatBoost, XGBoost and LightGBM with the offset target, plus LightGBM without it; experiments E03, E07, E12, E15, E16, E26, E29, E30, E32, E34 of the research log). (b) Stage-1 AUC as the training folds are subsampled: the curve is nearly flat.}
+\caption{(a) Amount-model NMAE by family and depth. (b) Payer classifier learning curve.}
 \label{fig:t3-sweep}
 \end{figure}
 
@@ -193,18 +214,18 @@ CatBoost + LightGBM, $3\times3$ seeds & 0.79529 & +0.00024 \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=.85\linewidth]{fig_t3_progression.png}
-\caption{OOF NMAE of each milestone. The shaded band is the ceiling that the learning curve of the payer residual suggests (0.796--0.797); the last three steps add less than 0.0013 together.}
+\caption{OOF NMAE by modelling milestone.}
 \label{fig:t3-progress}
 \end{figure}
 
-The final model scores 0.79535 (fold mean 0.79540, standard deviation 0.0076 across folds; the saved 10$\times$10 ensemble from the research pipeline gives 0.79537). Stage 1 alone reaches an out-of-fold AUC of 0.78439. The model predicts zero for 50.4\% of test players and has a mean prediction of 10{,}430 THB, close to the training mean of 10{,}497 THB. In the public leaderboard the 10-seed version scored 0.00001 above the 3-seed one (\texttt{sub\_v24a} against \texttt{sub\_v23a}), as the out-of-fold gain predicted.
+The shaded band in Figure~\ref{fig:t3-progress} marks the estimated ceiling of 0.796--0.797 suggested by the payer-residual learning curve. The three steps after the XGBoost offset milestone raise OOF NMAE from 0.79391 to 0.79535, a gain of 0.00144. The final model's fold mean is 0.79540, with a standard deviation of 0.0076 across folds. The saved 10$\times$10 ensemble from the research pipeline scores 0.79537. Stage 1 alone reaches an out-of-fold AUC of 0.78439. The model predicts zero for 50.4\% of test players and has a mean prediction of 10{,}430 THB, close to the training mean of 10{,}497 THB. In the public leaderboard the 10-seed version scored 0.00001 above the 3-seed one (\texttt{sub\_v24a} against \texttt{sub\_v23a}), as the out-of-fold gain predicted.
 
 \paragraph{How the model evolved, including the ZILN stages.} Figure~\ref{fig:t3-evolution} places the earlier ZILN stages on the same scale (data in \texttt{data/t3\_model\_evolution.csv}). The first hurdle ZILN model (XGBoost with a log-normal payer head) scored 0.7893, version 2 with the exact fill and the segment imputer 0.7916, version 3 0.7917, and the version-4 XGBoost multi-quantile blend 0.7920 (weights tuned on the same out-of-fold rows; the nested value is 0.79191 in Table~\ref{tab:t3-results}). The neural ZILN reached 0.7867 with one log-normal and 0.7901 with three. Blending version 4 with the $K=3$ network (weights 0.38, 0.24, 0.06 for the three XGBoost quantile models and 0.32 for the network) gave 0.7925 with in-sample weights; that blend was the Task~3 column of \texttt{sub\_v5} and \texttt{sub\_v6}. The CatBoost offset model then reached 0.79505 alone and 0.79535 as the final bag.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.38\textheight,keepaspectratio]{fig_t3_evolution.png}
-\caption{OOF NMAE of every Task~3 modelling stage. Blue marks the ZILN stages, green the CatBoost quantile stages. Filled markers were submitted as Task~3, diamonds were components of a submitted blend, hollow markers were research runs only. The ZILN stack reached 0.7925; the quantile model that replaced it is 0.0029 higher.}
+\caption{OOF NMAE across ZILN and CatBoost modelling stages.}
 \label{fig:t3-evolution}
 \end{figure}
 
@@ -250,12 +271,12 @@ $p\times$ payer median (expected-value style) & 0.78682 & $-0.00855$ \\
 
 \paragraph{Fold-seed robustness.} To check that the gain of the final recipe over our earlier XGBoost model is not luck of one fold split, we redrew the five folds with seed 7 (R2-09). The comparison is between two recipes, not two seeds of one: the earlier XGBoost multi-quantile model without the offset target (0.79183) and the final recipe, CatBoost depth 4 with the offset (0.79531), one seed each and the same stage-1 probabilities. The paired gain is $+0.00348\pm0.00045$ and positive in 5 of 5 folds, against $+0.00344$ on the original folds. So the gain comes from the model and the offset, not from the fold split.
 
-\paragraph{Decision log.} Figure~\ref{fig:t3-decision-log} lists every Task~3 experiment with its metric; the rows are in \texttt{data/decision\_log\_t3.csv}.
+\paragraph{Decision log.} Figure~\ref{fig:t3-decision-log} groups the experiments by metric family and shows each change in score. Green marks experiments we kept, grey marks those we dropped, and red hatching marks those excluded by competition rules. The rows are in \texttt{data/decision\_log\_t3.csv}.
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{decision_log_t3.pdf}
-\caption{Task 3 decision log: change in score (one panel per metric family) per experiment, kept versus dropped versus rule-excluded. Green = kept, grey = dropped, red hatched = excluded by the competition rules.}
+\caption{Task 3 experiment decision log.}
 \label{fig:t3-decision-log}
 \end{figure}
 
@@ -266,7 +287,7 @@ $p\times$ payer median (expected-value style) & 0.78682 & $-0.00855$ \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t3_error_budget.png}
-\caption{(a) Shares of accounts, spending and absolute error by segment. (b) The four sources of the total absolute error: multiplicative noise among payers, zero-spenders that are predicted as payers, 266 whale spikes, and payers predicted as zero.}
+\caption{(a) Account, spending, and error shares by segment. (b) Sources of absolute error.}
 \label{fig:t3-error}
 \end{figure}
 
@@ -279,7 +300,7 @@ Whales hold 79.4\% of the absolute error when they are defined by the recorded s
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t3_ziln_diag.png}
-\caption{(a) Error relative to spending in each segment for the neural ZILN ($K=1$, $K=3$) and the final CatBoost bag. (b) OOF NMAE of an arithmetic blend of the final model with the $K=3$ network; no weight above zero improves the score.}
+\caption{(a) Relative error by player segment. (b) OOF NMAE by neural ZILN blend weight.}
 \label{fig:t3-ziln}
 \end{figure}
 
@@ -322,12 +343,12 @@ $50/50$ robust blend with a second quantile model & 0 (public) & Public score id
 \end{tabular}
 \end{table}
 
-\paragraph{Noise, outliers and ensemble selection.} After the final model was fixed we spent two rounds on the target noise and one on ensembling, all as paired out-of-fold comparisons on the same folds (Figure~\ref{fig:t3-paired}; the shaded band is the 0.0005 noise bar we used). Optuna \citep{optuna} tuning of CatBoost belongs to the same family and is in Table~\ref{tab:t3-failed}.
+\paragraph{Noise, outliers and ensemble selection.} Figure~\ref{fig:t3-paired} shows paired changes in out-of-fold NMAE for calibration, noise and outlier handling, and ensemble selection. The markers and bars show the mean and standard deviation across the five folds. The calibration and ensemble runs use the final $3\times3$ model (0.79529) as their baseline, and the noise runs use a control with the same code (0.79512). All mean changes fall within the shaded $\pm0.0005$ band. Table~\ref{tab:t3-failed} also includes Optuna \citep{optuna} tuning of CatBoost.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=.92\linewidth,height=0.46\textheight,keepaspectratio]{fig_t3_paired.png}
-\caption{Paired change in OOF NMAE (mean and standard deviation over the five folds) for post-hoc calibration, noise and outlier handling, and ensemble selection. Calibration and ensemble rows are measured against the final $3\times3$ bag (0.79529); noise rows against a same-code control (0.79512). No row clears the noise bar.}
+\caption{Paired OOF NMAE changes in follow-up experiments.}
 \label{fig:t3-paired}
 \end{figure}
 

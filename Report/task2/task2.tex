@@ -74,9 +74,9 @@ Figure~\ref{fig:t2-latent}. Two latent traits, noisy categorical read-outs, a fe
 
 \paragraph{Feature set.} Of the 44 raw features we keep 28: 23 continuous ones and five discrete ones (\feat{competitive_rank}, \feat{watches_esports}, \feat{vip_tier}, \feat{engagement_level}, \feat{loyalty_tier}). The dropped columns are \feat{random_metric_1..3}, \feat{account_age_days}, \feat{responds_to_discounts}, \feat{item_type_preference_social}, \feat{avg_match_length}, \feat{preferred_game_mode}, \feat{region}, \feat{platform}, \feat{device_type}, \feat{payment_method}, \feat{language}, \feat{account_status}, \feat{player_type_tag} and \feat{skill_tier}.
 
-\paragraph{Naive Bayes inputs.} Bin edges are the quantiles of the training portion of each fold only, so no information flows from the validation rows. Discrete features use their levels (with an explicit \texttt{NA} level for the two string columns), and a missing continuous value contributes a log-likelihood of zero. This is safe because the missingness is completely at random \citep{mcar}: the NaN rate is 7.5--8\% in every feature and every class, and the number of NaNs per row is equal across classes. There is no scaling and no imputation.
+\paragraph{Naive Bayes inputs.} Bin edges are the quantiles of the training portion of each fold only, so no information flows from the validation rows. Discrete features use empirical categorical PMFs with Laplace smoothing $\alpha=1$ (with an explicit \texttt{NA} level for the two string columns), avoiding arbitrary ordinality assumptions. A missing continuous value contributes a log-likelihood of zero. This is safe because the missingness is completely at random \citep{mcar}: the NaN rate is 7.5--8\% in every feature and every class, and the number of NaNs per row is equal across classes. There is no scaling and no imputation.
 
-\paragraph{Inputs of the two discriminative models.} The spline logistic regression and the MLP use the numeric columns that survive the screen, plus a one-hot encoding of \feat{engagement_level} and \feat{loyalty_tier}. Inside every training fold, missing values are filled with the fold median, then a quantile transformer maps each feature to a normal distribution and a scaler standardises it. Every transformer is fitted on the training part of its fold.
+\paragraph{Inputs of the two discriminative models.} In contrast to Naive Bayes, the spline logistic regression and the MLP require dense numerical representations. They use the numeric columns that survive the screen, plus one-hot encoding for the categorical features \feat{engagement_level} and \feat{loyalty_tier}. Inside every training fold, missing values are filled with the fold median, then a quantile transformer maps each feature to a normal distribution and a scaler standardises it. Every transformer is fitted on the training part of its fold.
 
 \subsubsection{Model Design}
 \label{sec:t2-design}
@@ -145,7 +145,7 @@ To handle label noise, we assume that the observed label $\tilde y$ equals the l
 \subsubsection{Evaluation and Results}
 \label{sec:t2-eval}
 
-The score is $\text{macro F1}=\frac14\sum_{k=0}^{3}\frac{2\,\text{TP}_k}{2\,\text{TP}_k+\text{FP}_k+\text{FN}_k}$. Table~\ref{tab:t2-results} lists the out-of-fold macro F1 of each component and of the final prediction; Figure~\ref{fig:t2-progress} draws the same numbers.
+The score is $\text{macro F1}=\frac14\sum_{k=0}^{3}\frac{2\,\text{TP}_k}{2\,\text{TP}_k+\text{FP}_k+\text{FN}_k}$. Table~\ref{tab:t2-results} lists the out-of-fold macro F1 of each component and of the final prediction. The tuned LightGBM baseline (0.7524) was measured on the first data release, so it appears in Table~\ref{tab:t2-failed} instead and is not compared with these numbers.
 
 \begin{table}[H]\centering\small
 \caption{Out-of-fold macro F1 on the re-released Task 2 data (5 folds, seed 42, no \texttt{player\_id}).}\label{tab:t2-results}
@@ -162,14 +162,7 @@ Blend 0.87 / 0.08 / 0.05, \texttt{argmax} & 0.75798 & $+0.00032$ \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=.85\linewidth]{fig_t2_progression.png}
-\caption{OOF macro F1 of each component and of the final blend. The Naive Bayes model carries almost all of the score; the blend and the decision rule add small, consistent steps.}
-\label{fig:t2-progress}
-\end{figure}
-
-The Naive Bayes model alone reaches 0.75766 (per fold 0.7548--0.7617; three seeds 0.7577--0.7582). The two discriminative models are individually worse by 0.003--0.005 but make different mistakes, so the 0.87/0.08/0.05 blend adds 0.00032 over Naive Bayes alone, and the affine rule, which changes 2{,}056 of the 104{,}000 OOF predictions (1.98\%), adds a further 0.00028. All numbers in this table come from the re-released data; the experiments of the failed-experiments table and the decision log are labelled ``first release'' or ``new data'' row by row, and the two releases must not be compared absolutely, because the rows were regenerated. The public leaderboard agrees in direction. On the first data release, replacing the plain Naive Bayes in Task~2 by the blend and the rule raised the public score from 0.71965 to 0.71999 (\texttt{sub\_v16b} $\to$ \texttt{sub\_v18a}), a gain of 0.00034 on the whole submission, or about 0.0017 of Task~2 macro F1 at a task weight of 0.2. The submission that this report describes, with the same Task~2 model, scored 0.87351 on the public leaderboard.
+The Naive Bayes model alone reaches 0.75766 (per fold 0.7548--0.7617; three seeds 0.7577--0.7582). The two discriminative models are individually worse by 0.003--0.005 but make different mistakes, so the 0.87/0.08/0.05 blend adds 0.00032 over Naive Bayes alone, and the affine rule, which changes 2{,}056 of the 104{,}000 OOF predictions (1.98\%), adds a further 0.00028. The final pipeline reaches an OOF macro F1 of 0.75826. All numbers in this table come from the re-released data; the experiments of the failed-experiments table and the decision log are labelled ``first release'' or ``new data'' row by row, and the two releases must not be compared absolutely, because the rows were regenerated. The public leaderboard agrees in direction. On the first data release, replacing the plain Naive Bayes in Task~2 by the blend and the rule raised the public score from 0.71965 to 0.71999 (\texttt{sub\_v16b} $\to$ \texttt{sub\_v18a}), a gain of 0.00034 on the whole submission, or about 0.0017 of Task~2 macro F1 at a task weight of 0.2. The submission that this report describes, with the same Task~2 model, scored 0.87351 on the public leaderboard.
 
 \paragraph{Decision log.} Figure~\ref{fig:t2-decision-log} lists every Task~2 experiment, with the metric each number measures. The rows are in \texttt{data/decision\_log\_t2.csv}.
 

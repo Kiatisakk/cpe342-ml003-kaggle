@@ -19,7 +19,7 @@ We first checked which rows had labels and how the classes were distributed. We 
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{class_balance.png}
+\includegraphics[width=0.78\linewidth,height=0.22\textheight,keepaspectratio]{class_balance.png}
 \caption{Label availability (left) and class balance among labeled rows (right).}
 \label{fig:t1-balance}
 \end{figure}
@@ -249,8 +249,8 @@ The final blend improves OOF ROC-AUC by 0.00019 over Model A (Table~\ref{tab:t1-
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{fig_t1_lps_identity.png}
-\caption{(a) The ratio $r$ has the same uniform distribution in both classes (univariate AUC 0.5011), so it is a class-neutral identity. (b) OOF ROC-AUC with and without four masked copies (seed 42) by number of missing signal features per row; the gain grows from $+0.00006$ with no missing values to $+0.00229$ with four or more.}
+\includegraphics[width=0.62\linewidth]{fig_t1_masking_gain.png}
+\caption{OOF ROC-AUC with and without four masked copies (seed 42) by number of missing signal features per row; the gain grows from $+0.00006$ with no missing values to $+0.00229$ with four or more. The ratio $r$ used by the bounds has the same uniform distribution in both classes (univariate AUC 0.5011), so the bounds add no label information by themselves.}
 \label{fig:t1-masking}
 \end{figure}
 
@@ -311,8 +311,16 @@ Masking at twice the observed missing rate & F2m 0.78115 vs 0.78144 & Over-maski
 
 \subsubsection{Domain Interpretation and Business Impact}
 
-An anti-cheat team could use \texttt{score} to prioritize account reviews and \texttt{pred} to identify accounts at or above the competition threshold. The 59.81\% test flag rate reported in Results means that the competition threshold would send nearly six out of ten accounts into the review queue. An operational threshold should reflect review capacity and the cost of missing a cheater. The class-exclusive ranges in Figure~\ref{fig:t1-ranges} should also be checked on live player data before they inform account decisions.
+\paragraph{Tiered anti-cheat operational architecture.} In live multiplayer game operations, an anti-cheat pipeline cannot operate as a single blunt binary decision point. The competition threshold (0.37264) optimizes binary $F_2$, which yields an aggressive test flag rate of 59.81\% (15{,}484 of 25{,}889 accounts). Automatically banning nearly 60\% of the active player base is commercially unviable and would cause catastrophic player attrition due to inevitable false positives. Instead, this model serves as an operational \emph{Tier-1 statistical pre-filter}. Flagged accounts are routed into graduated mitigation tiers:
 
-To decide whether to keep the ensemble in production, compare it with Model A on a separate holdout using binary F2, runtime, and the share of accounts flagged. Break down precision and recall by missingness pattern and by the overlapping ranges in Figure~\ref{fig:t1-ranges} to show where either model needs improvement.
+\textbf{(1) Soft containment (shadow quarantine):} Accounts whose scores sit just above the threshold are silently routed to low-trust matchmaking pools where they only compete against other high-risk players, protecting the broader player base without alerting cheat developers.
+
+\textbf{(2) Dynamic friction challenges:} Flagged players encounter progressive friction gates, such as out-of-band mobile verification challenges or behavioral CAPTCHAs before queuing into ranked matches.
+
+\textbf{(3) High-priority forensic triage:} Accounts above a stricter second threshold, set from the review team's capacity, are prioritized for forensic telemetry extraction, deep server-side replay inspection, and expedited review by the human investigation team.
+
+\paragraph{Asymmetric cost-benefit trade-off.} The choice of binary $F_2$ ($\beta = 2$) reflects the fundamental economic reality of competitive games: the cost of a false negative (failing to catch a cheater) vastly exceeds the friction of a false positive within a tiered architecture. A single undetected cheater degrades every match they join, driving negative viral sentiment, diminished trust in matchmaking, and long-term player churn that directly damages player lifetime value (LTV). Conversely, when flagged accounts undergo progressive verification rather than immediate irreversible bans, the operational cost of a false positive is minimized to minor temporary latency. Weighting recall twice as heavily as precision directly aligns model optimization with long-term player retention.
+
+\paragraph{Operational drift and telemetry health monitoring.} Production deployment introduces risks from game client patches, network telemetry anomalies, and evolving cheat methods. As demonstrated by the missingness ablation (Figure~\ref{fig:t1-missauc}), model discrimination is highly dependent on key account indicators: missing two or more primary features causes OOF ROC-AUC to drop sharply from 0.922 to 0.831. If a client patch inadvertently corrupts or delays the logging of \feat{reports_received} or \feat{crosshair_placement}, the pre-filter's predictive capacity degrades immediately. A live deployment must therefore track feature missingness rates, distribution drift, and calibration across client versions in real-time, falling back to bound-based imputation and masking-augmented inference when telemetry degradation is detected.
 
 \end{document}
