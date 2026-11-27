@@ -203,12 +203,12 @@ Final A/B/C Ensemble & \textbf{0.89501} & \textbf{0.83979} \\
 
 \textbf{Review volume.} The same threshold flagged \textbf{62.80\%} of OOF accounts and \textbf{59.81\%} of test accounts. These are the shares sent for review if every flagged account is investigated.
 
-\paragraph{Operating point.} Figure~\ref{fig:t1-operating} shows why the cut sits near 60\%. Binary F2 rewards recall, so its optimum lies far to the right of the macro-F2 optimum (about 41\% flagged). A leaderboard probe that moved the cut from the macro optimum to the binary optimum (\texttt{sub\_v10d} $\to$ \texttt{probe\_v10e}) raised the public score by $+0.0128$, which showed that the leaderboard metric is binary F2. Small shifts of the cut change little: a 61\% cut scored $-0.00016$ against the 60\% cut.
+\paragraph{Operating point.} Figure~\ref{fig:t1-operating} shows why the cut sits near 60\%. Binary F2 rewards recall, so its optimum lies far to the right of the macro-F2 optimum (about 41\% flagged). A leaderboard probe that moved the cut from the macro optimum to the binary optimum (\texttt{sub\_v10d} $\to$ \texttt{probe\_v10e}) raised the public score by $+0.0128$, which showed that the leaderboard metric is binary F2. Small shifts of the cut change little: a 61\% cut scored $-0.00016$ against the 60\% cut. Figure~\ref{fig:t1-operating} comes from a re-run of the same pipeline. Its marker is the submitted notebook's threshold (0.37264), which flags 62.80\% of OOF accounts and 59.81\% of test accounts. Re-runs on another CPU give a threshold within about 0.005 because multithreaded tree training is not bit-reproducible; the curve shape is unchanged.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{fig_t1_f2_operating_point.png}
-\caption{OOF binary F2 and macro F2 against the fraction flagged, from a re-run of the same pipeline. The marker is the submitted notebook's threshold (0.37264), which flags 62.80\% of OOF accounts and 59.81\% of test accounts. Re-runs on another CPU give a threshold within about 0.005 because multithreaded tree training is not bit-reproducible; the curve shape is unchanged.}
+\caption{OOF binary F2 and macro F2 against the fraction flagged.}
 \label{fig:t1-operating}
 \end{figure}
 
@@ -234,12 +234,12 @@ Blends LGB + XGB + Cat; LGB + MLP + NB & within noise & MLP weight 0.08, NB 0.00
 \end{tabular}
 \end{table}
 
-\paragraph{Decision log.} Figure~\ref{fig:t1-decision-log} summarizes every experiment we kept, dropped or excluded for rule reasons; the underlying rows are in \texttt{data/decision\_log\_t1.csv}.
+\paragraph{Decision log.} Figure~\ref{fig:t1-decision-log} summarizes every experiment we kept, dropped or excluded for rule reasons; the underlying rows are in \texttt{data/decision\_log\_t1.csv}. The figure shows the change in score for each experiment, with one panel per metric family. Green marks experiments we kept, grey marks those we dropped, and red hatching marks those excluded by the competition rules.
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{decision_log_t1.pdf}
-\caption{Task 1 decision log: change in score (one panel per metric family) per experiment, kept versus dropped versus rule-excluded. Green = kept, grey = dropped, red hatched = excluded by the competition rules.}
+\caption{Task 1 experiment decision log.}
 \label{fig:t1-decision-log}
 \end{figure}
 
@@ -250,29 +250,29 @@ The final blend improves OOF ROC-AUC by 0.00019 over Model A (Table~\ref{tab:t1-
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.62\linewidth]{fig_t1_masking_gain.png}
-\caption{OOF ROC-AUC with and without four masked copies (seed 42) by number of missing signal features per row; the gain grows from $+0.00006$ with no missing values to $+0.00229$ with four or more. The ratio $r$ used by the bounds has the same uniform distribution in both classes (univariate AUC 0.5011), so the bounds add no label information by themselves.}
+\caption{OOF ROC-AUC with and without masked copies, by missing signal features.}
 \label{fig:t1-masking}
 \end{figure}
 
-Figure~\ref{fig:t1-masking} shows that masking helps mostly where information is scarce: the more signal features a row is missing, the larger the gain, which matches the reason we trained on masked copies. The overall effect is small (OOF AUC 0.89403 to 0.89446). These ablation numbers come from a re-run on different hardware, so small differences from the submitted notebook's scores are expected.
+Figure~\ref{fig:t1-masking} compares OOF ROC-AUC with and without four masked copies (seed 42), grouped by the number of missing signal features per row. It shows that masking helps mostly where information is scarce: the gain grows from $+0.00006$ with no missing values to $+0.00229$ with four or more, which matches the reason we trained on masked copies. The overall effect is small (OOF AUC 0.89403 to 0.89446). These ablation numbers come from a re-run on different hardware, so small differences from the submitted notebook's scores are expected. The ratio $r$ used by the bounds has the same uniform distribution in both classes (univariate AUC 0.5011), so the bounds add no label information by themselves.
 
-\paragraph{Where the errors concentrate.} We scored the final out-of-fold predictions separately for rows with and without missing values in four informative features (Figure~\ref{fig:t1-missauc}). Rows with all four present reach OOF ROC-AUC 0.922. Rows missing \feat{reports_received}, \feat{friend_network_size}, \feat{account_age_days} or \feat{crosshair_placement} fall to 0.856--0.864, and rows missing two or more of them to 0.831. Research-phase runs of a single LightGBM found the same pattern (0.854--0.863 on these rows against about 0.90 elsewhere). The error is therefore concentrated in incomplete rows, where less evidence is available. Because missingness does not depend on the label (Figure~\ref{fig:t1-missing}; missing completely at random, \citealp{mcar}), these rows are not harder cases of cheating, they simply carry fewer clues. This is the reason for the masking augmentation, and it matches the gain in Figure~\ref{fig:t1-masking} growing with the number of missing values.
+\paragraph{Where the errors concentrate.} We scored the final out-of-fold predictions separately for rows with and without missing values in four informative features (Figure~\ref{fig:t1-missauc}). The figure uses the final LightGBM averaged over three split seeds on 90,816 labeled rows, and the dotted line is the all-row AUC. Each missing key feature costs about 0.06 AUC and two or more cost about 0.09. The groups overlap, so the bars are not additive. Rows with all four present reach OOF ROC-AUC 0.922. Rows missing \feat{reports_received}, \feat{friend_network_size}, \feat{account_age_days} or \feat{crosshair_placement} fall to 0.856--0.864, and rows missing two or more of them to 0.831. Research-phase runs of a single LightGBM found the same pattern (0.854--0.863 on these rows against about 0.90 elsewhere). The error is therefore concentrated in incomplete rows, where less evidence is available. Because missingness does not depend on the label (Figure~\ref{fig:t1-missing}; missing completely at random, \citealp{mcar}), these rows are not harder cases of cheating, they simply carry fewer clues. This is the reason for the masking augmentation, and it matches the gain in Figure~\ref{fig:t1-masking} growing with the number of missing values.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.92\linewidth]{fig_t1_missing_auc.png}
-\caption{OOF ROC-AUC of the final LightGBM (average of three split seeds, 90,816 labeled rows) by missingness group; the dotted line is the all-row AUC. Takeaway: each missing key feature costs about 0.06 AUC and two or more cost about 0.09. The groups overlap, so the bars are not additive.}
+\caption{OOF ROC-AUC of the final LightGBM by missingness group.}
 \label{fig:t1-missauc}
 \end{figure}
 
-\paragraph{How far can the score go?} Three measurements say that the data, not the model, limits the score (Figure~\ref{fig:t1-ceiling}). First, a learning curve of LightGBM on 10--100\% of each fold's training rows gains only 0.0015 macro F2 over the last 1.4-fold increase in data, and a power-law fit gives an asymptote of 0.7833 macro F2 and 0.8939 AUC for unlimited data. The research-phase final ensemble (0.7828 macro F2, 0.8948 AUC) already sits on that asymptote, so more data, capacity or tuning cannot reach 0.79. Second, the class-exclusive value ranges of Figure~\ref{fig:t1-ranges} cover 34.2\% of the labeled rows (31,055), and the model classifies every one of them correctly; forcing hard overrides there changed nothing. The other 59,761 rows form an overlap core with a cheater rate of 0.419, where the model reaches AUC 0.773. Reaching 0.79 macro F2 would need about 6\% fewer mis-ordered pairs inside that core (AUC 0.786). Third, a search for a second hidden identity predicted each of the 31 columns from the others and found only the known $\mathrm{lps}=\mathrm{level}\cdot r/\mathrm{age}$ relation (held-out $R^2$ 0.79 for age and 0.73 for \feat{level_progression_speed}); every other column has $R^2 \le 0.5$.
+\paragraph{How far can the score go?} Three measurements say that the data, not the model, limits the score (Figure~\ref{fig:t1-ceiling}). First, a learning curve of LightGBM on 10--100\% of each fold's training rows gains only 0.0015 macro F2 over the last 1.4-fold increase in data, and a power-law fit gives an asymptote of 0.7833 macro F2 and 0.8939 AUC for unlimited data. The curves are the mean of three seeds, with a nested threshold for F2, and both flatten near the asymptote, so the score is limited by the information in the features. The research-phase final ensemble (0.7828 macro F2, 0.8948 AUC) already sits on that asymptote, so more data, capacity or tuning cannot reach 0.79. Second, the class-exclusive value ranges of Figure~\ref{fig:t1-ranges} cover 34.2\% of the labeled rows (31,055), and the model classifies every one of them correctly; forcing hard overrides there changed nothing. The other 59,761 rows form an overlap core with a cheater rate of 0.419, where the model reaches AUC 0.773. Reaching 0.79 macro F2 would need about 6\% fewer mis-ordered pairs inside that core (AUC 0.786). Third, a search for a second hidden identity predicted each of the 31 columns from the others and found only the known $\mathrm{lps}=\mathrm{level}\cdot r/\mathrm{age}$ relation (held-out $R^2$ 0.79 for age and 0.73 for \feat{level_progression_speed}); every other column has $R^2 \le 0.5$.
 
 A later analysis of the generator explains the shape of the core. The data look like uniform boxes per sub-population (for example legitimate new accounts with age 1--110 days, friends 0--49 and reports 10--29, against cheater accounts aged 15--180 or 200--1000 days) plus near-Gaussian skill features. Cheaters are slightly \emph{worse} than legitimate players on every skill feature (0.08--0.24 standard deviations), not better. Inside one overlap cell (6,006 complete rows) linear discriminant analysis, quadratic discriminant analysis and a quadratic logistic regression reach AUC 0.619, 0.606 and 0.615: the classes differ by a pure mean shift, with no covariance or mixture structure that a more flexible model could use. The gradient-boosted model reaches 0.699 in the same cell because the step-shaped distributions of reports and friends still carry information. Adding cross-fitted linear skill logits as features raised AUC by 0.0003 and changed F2 by $\pm 0.0001$, so the trees already use the linear part.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{fig_t1_ceiling.png}
-\caption{Learning curve of LightGBM on 10--100\% of the training rows of each fold (mean of three seeds, nested threshold for F2) with a power-law fit. Takeaway: both curves flatten near the asymptote (macro F2 0.7833, AUC 0.8939), so the score is limited by the information in the features.}
+\caption{Learning curve of LightGBM with a power-law fit.}
 \label{fig:t1-ceiling}
 \end{figure}
 

@@ -21,9 +21,11 @@ We asked four questions. How unbalanced are the classes? Which columns carry any
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.36\textheight,keepaspectratio]{fig_t2_balance_missing.png}
-\caption{(a) Training class balance; diamonds mark the class shares of our final test prediction. (b) Missing rate of each kept feature overall (dot) and across the four classes (grey bar). Segment 0 is 2.6 times as frequent as segment 3, and missingness is about 7.7\% everywhere, independent of the class.}
+\caption{(a) Training class balance. (b) Missing rate of each kept feature.}
 \label{fig:t2-balance}
 \end{figure}
+
+In Figure~\ref{fig:t2-balance}a the diamonds mark the class shares of our final test prediction. In Figure~\ref{fig:t2-balance}b the dot is the missing rate of a kept feature overall and the grey bar spans its rates across the four classes. Segment 0 is 2.6 times as frequent as segment 3, and missingness is about 7.7\% everywhere, independent of the class.
 
 \emph{What we see.} Segment 0 holds 39.4\% of the rows and segment 3 only 15.4\% (Figure~\ref{fig:t2-balance}a). Under macro F1 the rare classes are as valuable as the common one, so a plain \texttt{argmax} will favour class 0. Missingness (Figure~\ref{fig:t2-balance}b) is between 7.54\% and 7.85\% for every kept feature and differs by at most 0.64 percentage points between classes. Nothing in the pattern points to informative missingness. \emph{What we decided.} We fit a decision rule that targets macro F1 directly (Section~\ref{sec:t2-design}) and we treat a missing value as ``no evidence'' rather than imputing it.
 
@@ -32,9 +34,11 @@ We asked four questions. How unbalanced are the classes? Which columns carry any
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.46\textheight,keepaspectratio]{fig_t2_feature_signal.png}
-\caption{Signal of each column against the segment. (a) $\log(1+F)$ of an ANOVA for the 34 numeric columns. (b) Cram\'er's V for the 10 categorical columns. Orange bars are the 28 kept features, grey bars the 16 dropped as noise.}
+\caption{(a) ANOVA signal of the numeric columns. (b) Cram\'er's V of the categorical columns.}
 \label{fig:t2-signal}
 \end{figure}
+
+Figure~\ref{fig:t2-signal}a shows $\log(1+F)$ of the ANOVA for the 34 numeric columns, and Figure~\ref{fig:t2-signal}b shows Cram\'er's V for the 10 categorical columns, each against the segment. Orange bars are the 28 kept features and grey bars are the 16 dropped as noise.
 
 \emph{What we see.} The columns separate into two clean groups. Every dropped numeric column has $\log(1+F)\le 1.15$ and every kept one has $\ge 3.4$. Of the ten categorical columns only \feat{loyalty_tier} (V = 0.404) and \feat{engagement_level} (V = 0.279) matter; the other eight, including \feat{region}, \feat{platform} and \feat{device_type}, have V below 0.008. Three columns are explicitly named \feat{random_metric_1..3}. \emph{What we decided.} Drop \feat{player_id} and the 16 noise columns (8 numeric, 8 categorical). That leaves 28 features, which keeps the models small and stops them from fitting noise.
 
@@ -43,9 +47,11 @@ We asked four questions. How unbalanced are the classes? Which columns carry any
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t2_independence.png}
-\caption{Spearman correlation among the 23 continuous kept features (diagonal masked). Left: all rows pooled. Right: weighted mean of the four within-class matrices. Conditioning on the class removes almost all correlation.}
+\caption{Spearman correlation among the continuous kept features, pooled (left) and within class (right).}
 \label{fig:t2-indep}
 \end{figure}
+
+The diagonal of each matrix is masked. The right panel is the weighted mean of the four within-class matrices, and it shows that conditioning on the class removes almost all correlation.
 
 \emph{What we see.} Pooled over all rows the mean absolute correlation is 0.035 (maximum 0.123). Inside a class it falls to 0.0036 (maximum 0.013), a 9.6-fold drop. The median absolute Pearson correlation per class is 0.004--0.010. The features are therefore conditionally independent given the segment, up to noise. Under that structure Naive Bayes \citep{naivebayes} is the Bayes-optimal classifier, because the joint likelihood is exactly the product of the one-dimensional likelihoods. \emph{What we decided.} Use a histogram Naive Bayes model as the main component, with a nonparametric density per feature, instead of a high-capacity model that would have to learn independence from data.
 
@@ -54,9 +60,11 @@ We asked four questions. How unbalanced are the classes? Which columns carry any
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t2_latent_2x2.png}
-\caption{(a) Median lifetime playtime and spending of each segment. (b,c) Distribution of the segment within each level of \texttt{engagement\_level} and \texttt{loyalty\_tier} (rows sum to 1).}
+\caption{(a) Segment medians of playtime and spending. (b,c) Segment mix by engagement level and loyalty tier.}
 \label{fig:t2-latent}
 \end{figure}
+
+Panel (a) shows the median lifetime playtime and spending of each segment. Panels (b) and (c) show the distribution of the segment within each level of \texttt{engagement\_level} and \texttt{loyalty\_tier}, so each row sums to 1.
 
 \emph{What we see.} The four medians sit at the corners of a rough grid: Casual and Social play fewer hours (1{,}389 h and 1{,}470 h), Grinder and Whale more (1{,}977 h and 2{,}015 h); Casual and Grinder spend less (26.1k and 28.6k THB), Social and Whale more (38.2k and 45.1k THB). The segment is therefore two binary traits, engagement and spending, and the two categorical columns are noisy read-outs of them: a \texttt{Veteran} is almost never Casual or Social (1\% each), and \texttt{Platinum} and \texttt{Diamond} players are almost never Casual or Grinder (1\% each). Yet no level is perfectly pure: those small residual cells hold the players whose label disagrees with their profile. \emph{What we decided.} We treat these rows as label noise \citep{noisylabels} and model it explicitly with an EM step (Section~\ref{sec:t2-design}). Two observations support the reading that they are random label flips rather than a real fifth type of player. First, a row that is inconsistent inside its class (a Casual player with engagement \texttt{Veteran} or loyalty \texttt{Diamond}) carries the \emph{feature profile} of the other class, 0.4 to 1.2 standard deviations away from its labelled class. Second, the within-class feature correlations stay below 0.013, so these rows are not a hidden sub-population with its own dependence structure. We let the EM step estimate the flip rate (2.8\%, which is the value we quote for the estimate; Section~\ref{sec:t2-design} reconciles it with the roughly 3\% that the first release revealed) rather than fixing it. We also tested merging the densities along the two axes; the data rejected it for most features (Section~\ref{sec:t2-mistakes}).
 
@@ -164,23 +172,23 @@ Blend 0.87 / 0.08 / 0.05, \texttt{argmax} & 0.75798 & $+0.00032$ \\
 
 The Naive Bayes model alone reaches 0.75766 (per fold 0.7548--0.7617; three seeds 0.7577--0.7582). The two discriminative models are individually worse by 0.003--0.005 but make different mistakes, so the 0.87/0.08/0.05 blend adds 0.00032 over Naive Bayes alone, and the affine rule, which changes 2{,}056 of the 104{,}000 OOF predictions (1.98\%), adds a further 0.00028. The final pipeline reaches an OOF macro F1 of 0.75826. All numbers in this table come from the re-released data; the experiments of the failed-experiments table and the decision log are labelled ``first release'' or ``new data'' row by row, and the two releases must not be compared absolutely, because the rows were regenerated. The public leaderboard agrees in direction. On the first data release, replacing the plain Naive Bayes in Task~2 by the blend and the rule raised the public score from 0.71965 to 0.71999 (\texttt{sub\_v16b} $\to$ \texttt{sub\_v18a}), a gain of 0.00034 on the whole submission, or about 0.0017 of Task~2 macro F1 at a task weight of 0.2. The submission that this report describes, with the same Task~2 model, scored 0.87351 on the public leaderboard.
 
-\paragraph{Decision log.} Figure~\ref{fig:t2-decision-log} lists every Task~2 experiment, with the metric each number measures. The rows are in \texttt{data/decision\_log\_t2.csv}.
+\paragraph{Decision log.} Figure~\ref{fig:t2-decision-log} lists every Task~2 experiment, with the metric each number measures. The rows are in \texttt{data/decision\_log\_t2.csv}. The figure shows the change in score for each experiment, with one panel per metric family. Green marks experiments we kept, grey marks those we dropped, and red hatching marks those excluded by the competition rules.
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{decision_log_t2.pdf}
-\caption{Task 2 decision log: change in score (one panel per metric family) per experiment, kept versus dropped versus rule-excluded. Green = kept, grey = dropped, red hatched = excluded by the competition rules.}
+\caption{Task 2 experiment decision log.}
 \label{fig:t2-decision-log}
 \end{figure}
 
 \subsubsection{Insights from Model Behaviour}
 
-Figure~\ref{fig:t2-errors} opens up the final OOF predictions.
+Figure~\ref{fig:t2-errors} opens up the final OOF predictions. Panel (a) is the row-normalised confusion matrix. Panel (b) compares per-class F1 with plain \texttt{argmax} on the blend against the affine rule. Panel (c) shows the predicted minus the true class share, where the rule shrinks the over-prediction of the Casual class from $+3.0$ to $+1.3$ points.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t2_errors.png}
-\caption{(a) Row-normalised confusion matrix of the final OOF predictions. (b) Per-class F1 with plain \texttt{argmax} on the blend versus the affine rule. (c) Predicted minus true class share. The rule shrinks the over-prediction of the Casual class from +3.0 to +1.3 points.}
+\caption{(a) Confusion matrix. (b) Per-class F1 by decision rule. (c) Predicted minus true class share.}
 \label{fig:t2-errors}
 \end{figure}
 
@@ -190,12 +198,12 @@ Figure~\ref{fig:t2-errors} opens up the final OOF predictions.
 
 \paragraph{Confidence.} The Naive Bayes probabilities are well calibrated (OOF log-loss 0.5975 on the new data). The 31\% of players whose blended top probability is at least 0.9 are classified correctly 94.8\% of the time, against 77.1\% overall. This ordering is useful in practice: a campaign can restrict itself to confident predictions.
 
-\paragraph{Ceiling.} Tuning, richer models and extra components all landed within 0.001 of the Naive Bayes score. We read this as a data ceiling. The generator gives conditionally independent features and a flip rate of about 3\% (2.8\% as estimated by EM); even a perfect model of the latent class would mislabel that fraction of the rows, and the overlapping tails cost the rest. A learning curve supports the reading. Figure~\ref{fig:t2-lc} trains the histogram Naive Bayes on a growing share of each fold's training part (first-release data, three seeds). Macro F1 rises from 0.7460 at 8{,}320 rows to 0.7518 at 20{,}800, 0.7539 at 41{,}600, 0.7550 at 62{,}400 and 0.7557 at 83{,}200 rows, so each doubling of the data brings less (about $+0.0018$ for the last one), and the extrapolation to unlimited data leaves about 0.002 of headroom. The EM variant leads at small sizes (0.7472 against 0.7460 at 10\%) and the two merge at full size. Within the noise of one data set (about $\pm0.002$ for macro F1 on this many rows) we are therefore at the feature-only ceiling.
+\paragraph{Ceiling.} Tuning, richer models and extra components all landed within 0.001 of the Naive Bayes score. We read this as a data ceiling. The generator gives conditionally independent features and a flip rate of about 3\% (2.8\% as estimated by EM); even a perfect model of the latent class would mislabel that fraction of the rows, and the overlapping tails cost the rest. A learning curve supports the reading. Figure~\ref{fig:t2-lc} trains the histogram Naive Bayes on a growing share of each fold's training part (first-release data; the curves show the mean and standard deviation over three seeds). The values were entered by hand from experiment log E11 in \texttt{data/t2\_learning\_curve.csv}. Macro F1 rises from 0.7460 at 8{,}320 rows to 0.7518 at 20{,}800, 0.7539 at 41{,}600, 0.7550 at 62{,}400 and 0.7557 at 83{,}200 rows, so each doubling of the data brings less (about $+0.0018$ for the last one), and the extrapolation to unlimited data leaves about 0.002 of headroom. The EM variant leads at small sizes (0.7472 against 0.7460 at 10\%) and the two merge at full size. Within the noise of one data set (about $\pm0.002$ for macro F1 on this many rows) we are therefore at the feature-only ceiling.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=.8\linewidth]{fig_t2_learning_curve.png}
-\caption{Learning curve of the histogram Naive Bayes with and without the label-noise EM (first-release data; mean and standard deviation over 3 seeds). Hand-entered from the experiment log E11 in \texttt{data/t2\_learning\_curve.csv}.}
+\caption{Learning curve of the histogram Naive Bayes with and without label-noise EM.}
 \label{fig:t2-lc}
 \end{figure}
 
