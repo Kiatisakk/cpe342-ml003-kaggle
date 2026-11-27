@@ -1,6 +1,8 @@
 \documentclass[../main.tex]{subfiles}
 \begin{document}
 \graphicspath{{figures/}{task3/figures/}}
+\begingroup
+\captionsetup[table]{justification=raggedright,singlelinecheck=false}
 
 \subsection{Task 3: Player Monthly Spending Prediction (NMAE)}
 \label{sec:t3}
@@ -64,9 +66,11 @@ We first examined how many accounts spend nothing and how spending is distribute
 
 \emph{What we see.} Of the 53{,}951 training payers, 50{,}826 (94.2\%) have a previous-month value. Among those payers, the correlation between $\log y$ and $\log(1+\text{prev})$ is 0.982. The residual is relatively tight within each recorded segment (robust standard deviation 0.27--0.34), while its median shifts from +0.17 for Casual players to +1.56 for whales. \emph{What we decided.} Model $\log y-\text{offset}$ so that the amount model learns how spending departs from the anchor. Table~\ref{tab:t3-offset-coverage} shows which offset each row uses after algebraic fill.
 
+The training payer column includes only rows with $y>0$. The test column includes all accounts.
+
 \begin{table}[H]
 \centering\small
-\caption{Offset source after algebraic fill. The payer column uses training rows with $y>0$; the test column includes all accounts.}
+\caption{Spending offset sources.}
 \label{tab:t3-offset-coverage}
 \begin{tabular}{@{}L{.43\linewidth}rrr@{}}
 \toprule
@@ -87,7 +91,7 @@ Historical spending supplies the offset for 3{,}112 of the 3{,}125 training paye
 
 Table~\ref{tab:t3-evidence} links each figure to its decision, and the paragraphs below describe the steps in order.
 
-\begin{evidencetable}{EDA evidence and the pipeline decision it motivated (task 3).}{tab:t3-evidence}
+\begin{evidencetable}{EDA findings and pipeline decisions.}{tab:t3-evidence}
 Figure~\ref{fig:t3-target}. 48\% zeros, payers across four orders of magnitude & Hurdle model: a payer probability $p$ and a payer-amount model on the log scale; point prediction chosen for MAE (Figure~\ref{fig:t3-qrule}). \\
 Figure~\ref{fig:t3-whales}. Whales are 14\% of rows and 87\% of money & Impute the missing segment with an XGBoost classifier and add $P(\text{whale})$; judge changes by their effect on whales. \\
 Figure~\ref{fig:t3-identities}. Products recover values for five money columns & Iterative algebraic fill reduces training missing rates from about 5.8\% to under 0.5\%. \\
@@ -153,7 +157,7 @@ What this picture decides: the model must deliver (i) a calibrated $p$ and (ii) 
 \end{figure}
 
 \begin{table}[H]\centering\small
-\caption{Components of the final Task 3 model.}\label{tab:t3-models}
+\caption{Final spending model components.}\label{tab:t3-models}
 \begin{tabular}{@{}L{.20\linewidth}L{.74\linewidth}@{}}
 \toprule
 \textbf{Component} & \textbf{Settings} \\
@@ -194,8 +198,10 @@ The point prediction is the hurdle median derived at the start of this section. 
 
 Table~\ref{tab:t3-results} follows the out-of-fold score from the first hurdle model to the final one, and Figure~\ref{fig:t3-progress} draws the same steps. All numbers use the same five folds. The final row is the value printed by the submission notebook.
 
+The earlier rows come from the local research pipeline, evaluated on the same five folds with seed 42 as the notebook result in the last row.
+
 \begin{table}[H]\centering\small
-\caption{Out-of-fold NMAE score at each milestone (5 folds, seed 42). Rows above the last come from the local research pipeline with the same folds; the last row is the submission notebook.}\label{tab:t3-results}
+\caption{Out-of-fold NMAE by milestone.}\label{tab:t3-results}
 \begin{tabular}{@{}L{.56\linewidth}L{.15\linewidth}L{.20\linewidth}@{}}
 \toprule
 \textbf{Model} & \textbf{OOF NMAE} & \textbf{Change vs row above} \\
@@ -233,8 +239,10 @@ What we see: each ZILN stage gained from better inputs (exact fill, segment) and
 
 \paragraph{Baselines.} Table~\ref{tab:t3-baselines} gives simple predictors on the same training rows, to show what the score means. A constant mean scores below the all-zero baseline because MAE punishes the many small payers it overpredicts and the whales it underpredicts.
 
+Medians are the only quantities fitted for the simple predictors in Table~\ref{tab:t3-baselines}.
+
 \begin{table}[H]\centering\small
-\caption{NMAE score of simple predictors on the training rows (no model fitting except the medians).}\label{tab:t3-baselines}
+\caption{Spending baseline scores.}\label{tab:t3-baselines}
 \begin{tabular}{@{}L{.62\linewidth}L{.15\linewidth}@{}}
 \toprule
 \textbf{Predictor} & \textbf{NMAE} \\
@@ -250,8 +258,10 @@ Median spending of the player's segment & 0.6139 \\
 
 \paragraph{The decision rule matters.} Table~\ref{tab:t3-rule} replaces the rule on the saved out-of-fold probabilities and quantiles.
 
+All rule variants use the same out-of-fold probabilities and quantiles from the saved $10\times10$ ensemble.
+
 \begin{table}[H]\centering\small
-\caption{Alternative point-prediction rules applied to the same OOF probabilities and quantiles (saved 10$\times$10 ensemble).}\label{tab:t3-rule}
+\caption{Alternative spending prediction rules.}\label{tab:t3-rule}
 \begin{tabular}{@{}L{.62\linewidth}L{.15\linewidth}L{.15\linewidth}@{}}
 \toprule
 \textbf{Rule} & \textbf{OOF NMAE} & \textbf{vs final} \\
@@ -317,8 +327,10 @@ Whales hold 79.4\% of the absolute error when they are defined by the recorded s
 
 \paragraph{Experiments that did not help.} Table~\ref{tab:t3-failed} lists them. The recurring lesson is that once the hurdle, the offset and the shallow quantile model are in place, every idea we tried changed the score by less than the standard deviation across folds (0.0076) or only by noise on the third digit.
 
+For each experiment, the OOF NMAE change is relative to the model to which the method was applied.
+
 \begin{table}[H]\centering\small
-\caption{Task 3 experiments that were not adopted (OOF NMAE change relative to the model they were added to).}\label{tab:t3-failed}
+\caption{Task 3 experiment results.}\label{tab:t3-failed}
 \begin{tabular}{@{}L{.38\linewidth}L{.16\linewidth}L{.38\linewidth}@{}}
 \toprule
 \textbf{Experiment} & \textbf{Change} & \textbf{Reading} \\
@@ -374,4 +386,5 @@ Karena's finance team misses quarterly targets by 35--40\%, the 20-person VIP su
 
 \paragraph{Limits.} The score of 0.795 is a floor set by the generator; on live data we would expect different noise. About a third of the error is unpredictable coin-flips on whether a player pays, so no individual prediction should be presented as a promise. The 266 whale spikes show that a few large, unforeseen purchases dominate any monthly total; finance should add a reserve for them instead of expecting a model to find them.
 
+\endgroup
 \end{document}

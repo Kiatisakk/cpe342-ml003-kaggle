@@ -1,6 +1,8 @@
 \documentclass[../main.tex]{subfiles}
 \begin{document}
 \graphicspath{{figures/}{task1/figures/}}
+\begingroup
+\captionsetup[table]{justification=raggedright,singlelinecheck=false}
 
 \subsection{Task 1: Anti-Cheat Pre-Filter (binary F2)}
 \label{sec:t1}
@@ -20,7 +22,7 @@ We first checked which rows had labels and how the classes were distributed. We 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.78\linewidth,height=0.22\textheight,keepaspectratio]{class_balance.png}
-\caption{Label availability (left) and class balance among labeled rows (right).}
+\caption{Label availability and class balance.}
 \label{fig:t1-balance}
 \end{figure}
 
@@ -31,7 +33,7 @@ In Figure~\ref{fig:t1-balance}, the left panel shows 13,184 unlabeled training r
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{feature_signal.png}
-\caption{Folded univariate ROC-AUC for the 15 retained and 16 excluded predictors.}
+\caption{Folded ROC-AUC by raw feature.}
 \label{fig:t1-signal}
 \end{figure}
 
@@ -42,18 +44,18 @@ In Figure~\ref{fig:t1-signal}, \feat{reports_received} and \feat{crosshair_place
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{missingness.png}
-\caption{Missing rates in train and test (left) and cheater rates with and without observed values (right).}
+\caption{Feature missingness and cheater rates.}
 \label{fig:t1-missing}
 \end{figure}
 
-In the left panel of Figure~\ref{fig:t1-missing}, \feat{reports_received} and \feat{friend_network_size} are each missing in about 22\% of labeled training rows. Both have lower missing rates in test. In the right panel, the cheater rate for \feat{reports_received} is close to 35\% whether the value is missing or observed. This comparison alone cannot establish that values are missing completely at random (MCAR). Model A uses missing indicators and masks additional values during training so it can learn from incomplete records.
+In the left panel of Figure~\ref{fig:t1-missing}, \feat{reports_received} and \feat{friend_network_size} are each missing in about 22\% of labeled training rows. Both have lower missing rates in test. In the right panel, the cheater rate for \feat{reports_received} is close to 35\% whether the value is missing or observed. This comparison alone cannot establish that values are missing completely at random (MCAR)~\citep{mcar}. Model A uses missing indicators and masks additional values during training so it can learn from incomplete records.
 
 \paragraph{Class-exclusive ranges.} We compared the distributions of \feat{reports_received}, \feat{crosshair_placement}, \feat{level}, and \feat{account_age_days} by class.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=.89\linewidth,height=0.35\textheight,keepaspectratio]{behavioral_ranges.png}
-\caption{Feature distributions by class, with class-exclusive ranges shaded.}
+\caption{Feature distributions by class.}
 \label{fig:t1-ranges}
 \end{figure}
 
@@ -64,7 +66,7 @@ The shaded bands in Figure~\ref{fig:t1-ranges} mark ranges where only one class 
 \begin{figure}[H]
 \centering
 \includegraphics[width=.89\linewidth,height=0.35\textheight,keepaspectratio]{age_bounds.png}
-\caption{Distribution of $r$ (left) and bounds for observed account age (right).}
+\caption{Progression ratio and account-age bounds.}
 \label{fig:t1-bounds}
 \end{figure}
 
@@ -74,7 +76,7 @@ The left panel of Figure~\ref{fig:t1-bounds} shows $r$ spread nearly evenly betw
 
 The EDA findings lead to five decisions in the training pipeline (Table~\ref{tab:t1-evidence}).
 
-\begin{evidencetable}{EDA evidence and the pipeline decision it motivated (task 1).}{tab:t1-evidence}
+\begin{evidencetable}{EDA findings and pipeline decisions.}{tab:t1-evidence}
 Figure~\ref{fig:t1-balance}. Class balance & Train on labeled rows and preserve class proportions in each fold. \\
 Figure~\ref{fig:t1-signal}. Feature signal & Keep 15 of the 31 raw predictors. \\
 Figure~\ref{fig:t1-missing}. Missingness & Add missing indicators and train Model A on additional masked rows. \\
@@ -95,7 +97,7 @@ The total weight in an interval such as \texttt{110 <= account\_age\_days < 120}
 \paragraph{Additional features.} Models A and C use the transformations in Table~\ref{tab:t1-features}. Model A has 56 features after the posterior features are included.
 
 \begin{table}[H]\centering\small
-\caption{Engineered feature groups and their purpose.}\label{tab:t1-features}
+\caption{Engineered feature groups.}\label{tab:t1-features}
 \begin{tabular}{@{}L{.22\linewidth}L{.73\linewidth}@{}}
 \toprule
 \textbf{Transformation} & \textbf{Examples and Rationale} \\
@@ -147,12 +149,12 @@ The ensemble gives 70\% of the weight to the masked LightGBM and uses the other 
 \draw[flow] (thr) -- (out);
 \node[note,anchor=north] at (5.4,-9.2) {threshold fitted on out-of-fold scores only};
 \end{tikzpicture}
-\caption{Task 1 pipeline from raw features to flagged accounts.}
+\caption{Task 1 cheater detection pipeline.}
 \label{fig:t1-pipeline}
 \end{figure}
 
 \begin{table}[H]\centering\small
-\caption{Model components and their weights in the final ensemble.}\label{tab:t1-models}
+\caption{Final ensemble components and weights.}\label{tab:t1-models}
 \begin{tabular}{@{}L{.15\linewidth}L{.11\linewidth}L{.67\linewidth}@{}}
 \toprule
 \textbf{Component} & \textbf{Weight} & \textbf{Training and Preprocessing} \\
@@ -182,7 +184,7 @@ We evaluated 251 candidate thresholds across quantiles 0.20--0.70 of the blended
 \paragraph{Results.} Table~\ref{tab:t1-results} lists the OOF results.
 
 \begin{table}[H]\centering\small
-\caption{OOF results for recorded model components and the final ensemble.}\label{tab:t1-results}
+\caption{Out-of-fold model results.}\label{tab:t1-results}
 \begin{tabular}{@{}L{.47\linewidth}L{.20\linewidth}L{.24\linewidth}@{}}
 \toprule
 \textbf{Model} & \textbf{OOF ROC-AUC} & \textbf{OOF Binary F2} \\
@@ -205,10 +207,12 @@ Final A/B/C Ensemble & \textbf{0.89501} & \textbf{0.83979} \\
 
 \paragraph{Operating point.} Figure~\ref{fig:t1-operating} shows why the cut sits near 60\%. Binary F2 rewards recall, so its optimum lies far to the right of the macro-F2 optimum (about 41\% flagged). A leaderboard probe that moved the cut from the macro optimum to the binary optimum (\texttt{sub\_v10d} $\to$ \texttt{probe\_v10e}) raised the public score by $+0.0128$, which showed that the leaderboard metric is binary F2. Small shifts of the cut change little: a 61\% cut scored $-0.00016$ against the 60\% cut.
 
+The curves come from a rerun of the same pipeline. The marker shows the submitted notebook's threshold of 0.37264. Rerunning on different hardware gives a threshold within about 0.005 because multithreaded tree training can yield small numerical differences.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{fig_t1_f2_operating_point.png}
-\caption{OOF binary F2 and macro F2 against the fraction flagged, from a re-run of the same pipeline. The marker is the submitted notebook's threshold (0.37264), which flags 62.80\% of OOF accounts and 59.81\% of test accounts. Re-runs on another CPU give a threshold within about 0.005 because multithreaded tree training is not bit-reproducible; the curve shape is unchanged.}
+\caption{OOF binary and macro F2 by fraction of flagged accounts.}
 \label{fig:t1-operating}
 \end{figure}
 
@@ -216,8 +220,10 @@ Final A/B/C Ensemble & \textbf{0.89501} & \textbf{0.83979} \\
 
 \paragraph{Standalone model comparison.} During the research phase we also compared other model families on the same labeled rows (Table~\ref{tab:t1-compare}). These scores are \emph{macro} F2 (F2m, both classes, threshold chosen nested or from OOF), because that was the metric under study at the time; the final leaderboard metric is binary F2 (Table~\ref{tab:t1-results}), so the two tables must not be compared number by number. Gradient-boosted trees \citep{xgboost,lightgbm,catboost}, HistGradientBoosting \citep{sklearn}, TabPFN \citep{tabpfn} and an explainable boosting machine \citep{ebm} all land between 0.7786 and 0.7807, which is within about 0.002 of each other; a mixture naive Bayes \citep{naivebayes} and a from-scratch neural network are clearly lower. Blends of the strongest models stayed within noise of the best single model, so ensembling adds little here.
 
+These research comparisons use three fold-split seeds or nested threshold evaluation, as applicable.
+
 \begin{table}[H]\centering\small
-\caption{Standalone models in the research phase (macro F2, F2m; 3 fold-split seeds or nested threshold; not the leaderboard metric).}\label{tab:t1-compare}
+\caption{Macro F2 of standalone models.}\label{tab:t1-compare}
 \begin{tabular}{@{}L{.50\linewidth}L{.16\linewidth}L{.24\linewidth}@{}}
 \toprule
 \textbf{Model} & \textbf{F2m} & \textbf{Other} \\
@@ -234,12 +240,12 @@ Blends LGB + XGB + Cat; LGB + MLP + NB & within noise & MLP weight 0.08, NB 0.00
 \end{tabular}
 \end{table}
 
-\paragraph{Decision log.} Figure~\ref{fig:t1-decision-log} summarizes every experiment we kept, dropped or excluded for rule reasons; the underlying rows are in \texttt{data/decision\_log\_t1.csv}.
+\paragraph{Decision log.} Figure~\ref{fig:t1-decision-log} shows each experiment's score change, with one panel per metric family. Green marks retained experiments, grey marks discarded experiments, and red hatching marks experiments excluded by the competition rules. The underlying rows are in \texttt{data/decision\_log\_t1.csv}.
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{decision_log_t1.pdf}
-\caption{Task 1 decision log: change in score (one panel per metric family) per experiment, kept versus dropped versus rule-excluded. Green = kept, grey = dropped, red hatched = excluded by the competition rules.}
+\caption{Task 1 experiment decision log.}
 \label{fig:t1-decision-log}
 \end{figure}
 
@@ -247,21 +253,25 @@ Blends LGB + XGB + Cat; LGB + MLP + NB & within noise & MLP weight 0.08, NB 0.00
 
 The final blend improves OOF ROC-AUC by 0.00019 over Model A (Table~\ref{tab:t1-results}). Component F2 values and a raw-feature baseline were not recorded, so the comparison cannot identify which learner or preprocessing step produced the gain or establish a component-level F2 improvement. The one isolated ablation we have is the masking augmentation (Figure~\ref{fig:t1-masking}).
 
+The masking ablation uses seed 42 and four masked copies. The ROC-AUC gain is $+0.00006$ when all signal features are observed and $+0.00229$ when four or more are missing. The ratio $r$ has a similar uniform distribution in both classes (univariate AUC 0.5011).
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.62\linewidth]{fig_t1_masking_gain.png}
-\caption{OOF ROC-AUC with and without four masked copies (seed 42) by number of missing signal features per row; the gain grows from $+0.00006$ with no missing values to $+0.00229$ with four or more. The ratio $r$ used by the bounds has the same uniform distribution in both classes (univariate AUC 0.5011), so the bounds add no label information by themselves.}
+\caption{Masking gains by missing feature count.}
 \label{fig:t1-masking}
 \end{figure}
 
 Figure~\ref{fig:t1-masking} shows that masking helps mostly where information is scarce: the more signal features a row is missing, the larger the gain, which matches the reason we trained on masked copies. The overall effect is small (OOF AUC 0.89403 to 0.89446). These ablation numbers come from a re-run on different hardware, so small differences from the submitted notebook's scores are expected.
 
-\paragraph{Where the errors concentrate.} We scored the final out-of-fold predictions separately for rows with and without missing values in four informative features (Figure~\ref{fig:t1-missauc}). Rows with all four present reach OOF ROC-AUC 0.922. Rows missing \feat{reports_received}, \feat{friend_network_size}, \feat{account_age_days} or \feat{crosshair_placement} fall to 0.856--0.864, and rows missing two or more of them to 0.831. Research-phase runs of a single LightGBM found the same pattern (0.854--0.863 on these rows against about 0.90 elsewhere). The error is therefore concentrated in incomplete rows, where less evidence is available. Because missingness does not depend on the label (Figure~\ref{fig:t1-missing}; missing completely at random, \citealp{mcar}), these rows are not harder cases of cheating, they simply carry fewer clues. This is the reason for the masking augmentation, and it matches the gain in Figure~\ref{fig:t1-masking} growing with the number of missing values.
+\paragraph{Where the errors concentrate.} We scored the final LightGBM out-of-fold predictions separately for rows with and without missing values in four informative features (Figure~\ref{fig:t1-missauc}). Rows with all four present reach OOF ROC-AUC 0.922. Rows missing \feat{reports_received}, \feat{friend_network_size}, \feat{account_age_days} or \feat{crosshair_placement} fall to 0.856--0.864, about 0.06 lower. Rows missing two or more reach 0.831, about 0.09 lower. Research-phase runs of a single LightGBM found the same pattern (0.854--0.863 on these rows against about 0.90 elsewhere). The lower AUC on incomplete rows motivated the masking augmentation. The gain in Figure~\ref{fig:t1-masking} grows as more features are missing.
+
+The bars average three split seeds over 90,816 labeled rows. The dotted line marks the all-row AUC. A row can contribute to more than one missingness group.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.92\linewidth]{fig_t1_missing_auc.png}
-\caption{OOF ROC-AUC of the final LightGBM (average of three split seeds, 90,816 labeled rows) by missingness group; the dotted line is the all-row AUC. Takeaway: each missing key feature costs about 0.06 AUC and two or more cost about 0.09. The groups overlap, so the bars are not additive.}
+\caption{ROC-AUC by feature missingness.}
 \label{fig:t1-missauc}
 \end{figure}
 
@@ -269,10 +279,12 @@ Figure~\ref{fig:t1-masking} shows that masking helps mostly where information is
 
 A later analysis of the generator explains the shape of the core. The data look like uniform boxes per sub-population (for example legitimate new accounts with age 1--110 days, friends 0--49 and reports 10--29, against cheater accounts aged 15--180 or 200--1000 days) plus near-Gaussian skill features. Cheaters are slightly \emph{worse} than legitimate players on every skill feature (0.08--0.24 standard deviations), not better. Inside one overlap cell (6,006 complete rows) linear discriminant analysis, quadratic discriminant analysis and a quadratic logistic regression reach AUC 0.619, 0.606 and 0.615: the classes differ by a pure mean shift, with no covariance or mixture structure that a more flexible model could use. The gradient-boosted model reaches 0.699 in the same cell because the step-shaped distributions of reports and friends still carry information. Adding cross-fitted linear skill logits as features raised AUC by 0.0003 and changed F2 by $\pm 0.0001$, so the trees already use the linear part.
 
+The points average three split seeds with a nested threshold for F2. The figure overlays the power-law fits.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{fig_t1_ceiling.png}
-\caption{Learning curve of LightGBM on 10--100\% of the training rows of each fold (mean of three seeds, nested threshold for F2) with a power-law fit. Takeaway: both curves flatten near the asymptote (macro F2 0.7833, AUC 0.8939), so the score is limited by the information in the features.}
+\caption{LightGBM training-size learning curves.}
 \label{fig:t1-ceiling}
 \end{figure}
 
@@ -289,7 +301,7 @@ A later analysis of the generator explains the shape of the core. The data look 
 \paragraph{Research-phase experiments that failed.} Table~\ref{tab:t1-failed} lists the ideas tested during the research phase. All numbers are nested-threshold scores from three fold-split seeds unless noted, measured against the same LightGBM without the change; they are macro F2 (F2m) or binary F2 as labelled, not leaderboard scores.
 
 \begin{table}[H]\centering\small
-\caption{Failed research-phase experiments (differences against the matching baseline).}\label{tab:t1-failed}
+\caption{Research-phase experiment results.}\label{tab:t1-failed}
 \begin{tabular}{@{}L{.27\linewidth}L{.33\linewidth}L{.32\linewidth}@{}}
 \toprule
 \textbf{Idea} & \textbf{Result} & \textbf{Why it did not help} \\
@@ -323,4 +335,5 @@ Masking at twice the observed missing rate & F2m 0.78115 vs 0.78144 & Over-maski
 
 \paragraph{Operational drift and telemetry health monitoring.} Production deployment introduces risks from game client patches, network telemetry anomalies, and evolving cheat methods. As demonstrated by the missingness ablation (Figure~\ref{fig:t1-missauc}), model discrimination is highly dependent on key account indicators: missing two or more primary features causes OOF ROC-AUC to drop sharply from 0.922 to 0.831. If a client patch inadvertently corrupts or delays the logging of \feat{reports_received} or \feat{crosshair_placement}, the pre-filter's predictive capacity degrades immediately. A live deployment must therefore track feature missingness rates, distribution drift, and calibration across client versions in real-time, falling back to bound-based imputation and masking-augmented inference when telemetry degradation is detected.
 
+\endgroup
 \end{document}

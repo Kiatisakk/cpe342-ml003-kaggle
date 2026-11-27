@@ -15,12 +15,15 @@ Karena Thailand, the fictional publisher in the course brief, wants a Player Int
 \node[draw=ink!80,thick,rounded corners=3pt,fill=gridline!50,align=center,text width=12.8cm,minimum height=10mm,font=\footnotesize] (ltv) at (6.3,-2.5) {\textbf{Player Intelligence System} (course vision: player lifetime value)\\review queue $\cdot$ campaign targeting $\cdot$ VIP and revenue planning $\cdot$ support routing $\cdot$ security alerts};
 \foreach \n in {a,b,c,d,e}{\draw[flow] (\n.south) -- (\n.south |- ltv.north);}
 \end{tikzpicture}
-\caption{The five tasks and the decisions they support in the Player Intelligence System.}
+\caption{Player Intelligence System overview.}
 \label{fig:summary-overview}
 \end{figure}
 
+The table reports out-of-fold (OOF) validation on training data, with held-out scenes for Task 4 and an estimate for the unlabeled Task 5.
+
 \begin{table}[H]\centering\scriptsize
-\caption{Task, metric, final approach, validation result and business use. Validation results are out-of-fold (OOF) on training data, except Task 4 (held-out scenes) and Task 5 (no labels).}
+\captionsetup{justification=raggedright,singlelinecheck=false}
+\caption{Task methods, results and business uses.}
 \label{tab:summary-master}
 \begin{tabular}{@{}L{.10\linewidth}L{.12\linewidth}L{.29\linewidth}L{.17\linewidth}L{.21\linewidth}@{}}
 \toprule
