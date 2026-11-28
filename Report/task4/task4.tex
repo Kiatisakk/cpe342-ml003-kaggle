@@ -1,6 +1,8 @@
 \documentclass[../main.tex]{subfiles}
 \begin{document}
 \graphicspath{{figures/}{task4/figures/}}
+\begingroup
+\captionsetup[table]{justification=raggedright,singlelinecheck=false}
 
 \subsection{Task 4: Game Title Detection (macro F1)}
 \label{sec:t4}
@@ -15,48 +17,50 @@ The training set holds 31,546 labelled images and the test set 25,889 images. \t
 
 All figures in this section use \emph{training} images only. We looked at the class balance, the images themselves, simple colour statistics, and how repetitive the training scenes are.
 
-\paragraph{Class balance.}
-
+\paragraph{Class balance.} Figure~\ref{fig:t4-balance} shows the class counts and the two quantities derived from them.
+\par\nopagebreak
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.32\textheight,keepaspectratio]{fig_t4_class_balance.png}
-\caption{(a) Training images per title. (b) The two quantities we derive from the counts: the mild loss weight $1/\sqrt{n_k}$ and the logit offset $-\log\pi_k$ used at inference. 7-11 Knights has about four times as many images as Roblock.}
+\caption{(a) Images per title. (b) Class weights and prior offsets.}
 \label{fig:t4-balance}
 \end{figure}
 
 Figure~\ref{fig:t4-balance}a shows 39.4\% of the images in 7-11 Knights and 10.1\% in Roblock. Because macro F1 gives each title the same weight, a model trained with plain cross-entropy drifts toward the large class on ambiguous screenshots. We therefore use mild inverse-square-root class weights during training and, at inference, an exact correction of the class prior from the training counts (logit adjustment~\citep{logitadjust}) (Section~\ref{sec:t4-design}).
 
-\paragraph{What the images look like.}
-
+\paragraph{What the images look like.} Figure~\ref{fig:t4-samples} shows two training screenshots per title, including menus, chat and gameplay. Figure~\ref{fig:t4-appearance} estimates brightness and saturation densities from 250 images per title.
+\par\nopagebreak
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.3\textheight,keepaspectratio]{fig_t4_samples.png}
-\caption{Two random training screenshots per title (native $230\times120$). The images are noisy, often rotated with black borders, and contain menus, chat windows and in-game scenes.}
+\caption{Sample training screenshots by title.}
 \label{fig:t4-samples}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.3\textheight,keepaspectratio]{fig_t4_appearance.png}
-\caption{Kernel density of mean brightness and mean saturation by title, 250 random training images per title. The five curves overlap heavily.}
+\caption{(a) Brightness by title. (b) Saturation by title.}
 \label{fig:t4-appearance}
 \end{figure}
 
 Figure~\ref{fig:t4-samples} shows that the screenshots are small, noisy and varied inside every title, with HUD elements at the sides of a wide frame. Every sampled image has the same size, $230\times120$ (aspect ratio 1.92). Figure~\ref{fig:t4-appearance} shows that brightness and saturation do not separate the titles, so low-level colour statistics are not a usable signal. We decided to resize to a widescreen $224\times416$ input (both sides multiples of the ViT patch size 16) instead of a square crop that would cut away the side HUD, to rely on large pretrained backbones that recognise art style and UI, and to use only generic augmentation (crop, flip, brightness, contrast and saturation jitter).
 
-\paragraph{Near-duplicate scenes.}
-
+\paragraph{Near-duplicate scenes.} Figure~\ref{fig:t4-neardup} compares nearest neighbours using $28\times16$ thumbnails, with 500 images sampled per title.
+\par\nopagebreak
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.3\textheight,keepaspectratio]{fig_t4_neardup.png}
-\caption{(a) Cosine similarity of each training thumbnail ($28\times16$, 500 per title) to its nearest other training thumbnail. (b) Share of nearest neighbours with the same title, by similarity quintile.}
+\caption{(a) Nearest-neighbour image similarity. (b) Title agreement by similarity.}
 \label{fig:t4-neardup}
 \end{figure}
+
+The comparison uses five folds. The random-fold heads used four training views and the scene-group heads used two, so the score gaps are indicative.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=.92\linewidth,keepaspectratio]{fig_t4_cv_gap.png}
-\caption{Macro F1 of a linear head on frozen features under random 5-fold CV (grey) and scene-group CV (violet; k-means with 8 clusters per title on frozen SigLIP2 features, whole clusters held out). The head variants differ slightly in their views (the random-CV heads used four train views, the scene-group heads two), so gaps are indicative. Every family loses 5--10 points once whole scenes are held out.}
+\caption{Frozen-head macro F1 under random and scene-group CV.}
 \label{fig:t4-cvgap}
 \end{figure}
 
@@ -64,39 +68,45 @@ Even this crude thumbnail descriptor finds many near-duplicates inside the train
 
 \subsubsection{Data Preprocessing}
 
-\begin{evidencetable}{EDA evidence and the pipeline decision it motivated (task 4).}{tab:t4-evidence}
+\begin{evidencetable}{EDA findings and pipeline decisions.}{tab:t4-evidence}
 Figure~\ref{fig:t4-balance}. About 4:1 class imbalance under macro F1 & Class weights $1/\sqrt{n_k}$ in training; exact uniform-prior logit adjustment at inference using train counts only. \\
 Figure~\ref{fig:t4-samples}. Small, noisy, rotated frames with side HUD & Widescreen $224\times416$ input; random-crop, flip and photometric jitter; large pretrained backbones. \\
 Figure~\ref{fig:t4-appearance}. Brightness and saturation overlap across titles & No hand-made colour features; photometric jitter only, so the model cannot lean on lighting. \\
 Figure~\ref{fig:t4-neardup}. Near-duplicate scenes in train & Scene-grouped stratified folds built from train-only embeddings. \\
 Figure~\ref{fig:t4-scene-fold-samples}. Each scene fold holds whole scenes of every title & Scene fold 0 stands in for new scenes. \\
-Figure~\ref{fig:t4-cvgap}. Random CV overstates every family by 5--10 points & Use scene fold 0 for model choice, depth cut, weights and temperature calibration. \\
+Figure~\ref{fig:t4-cvgap}. Random CV overstates every family by 5--10 points & Use scene validation for model and depth comparisons and for temperature calibration. Some blend weights also use public leaderboard evidence. \\
 \end{evidencetable}
 
 \paragraph{Input pipeline.} Images are loaded once as uint8 tensors at $448\times240$ and resized on the GPU to $224\times416$ with bicubic interpolation and antialiasing, then normalised with the statistics of the backbone (read from \texttt{timm}~\citep{timm}). At test time we average the log-probabilities of the plain and the horizontally flipped view (test-time augmentation is allowed by the TA).
 
 \paragraph{Augmentation and class weights.} Training uses a random resized crop (area 0.5--1.0, aspect ratio varied by $\pm15\%$), a horizontal flip with probability 0.5, and brightness, contrast and saturation factors drawn from 0.8--1.2. The loss is cross-entropy with label smoothing 0.1 and class weights $\propto 1/\sqrt{n_k}$ (normalised to mean 1).
 
-\paragraph{Scene-grouped folds.} The recipe is the same in research and in the final notebook: embed all training images with a frozen backbone, L2-normalise the embeddings, run k-means~\citep{kmeans} with 8 clusters inside each title (40 scene groups), and split the groups with a class-balanced 5-fold \texttt{StratifiedGroupKFold}~\citep{stratgroupkfold,sklearn}. During research the clusters were built from frozen \textbf{SigLIP2}~\citep{siglip2} embeddings (``sig8''; a 30-cluster variant is ``sig30''), and every figure and number in this report that mentions scene folds, fold 0 or scene-group CV uses these research folds. The final submission notebook (\texttt{task4.ipynb}) rebuilds the folds from frozen \textbf{DINOv3 ViT-7B block-30}~\citep{dinov3} embeddings with the same procedure, so that it is self-contained. Fold 0 holds 5,113 images from scenes the model never trains on. It is the validation set for every model-selection choice below and the data on which the calibration temperatures are fitted. Nothing in this procedure uses test images.
+\paragraph{Scene-grouped folds.} We L2-normalise frozen training embeddings, run k-means~\citep{kmeans} with eight clusters per title, and split the 40 groups with five-fold \texttt{StratifiedGroupKFold}~\citep{stratgroupkfold,sklearn}. Research used frozen SigLIP2~\citep{siglip2} embeddings. Its fold 0 contains 5,113 images and is the basis of the depth, LoRA and soup comparisons below. The submission notebook can rebuild the groups using frozen DINOv3 ViT-7B block-30 embeddings~\citep{dinov3}. Its recorded ensemble result comes from cached split indices and predictions, so we report it separately from the research comparisons. Both grouping procedures use training images only.
+
+Figure~\ref{fig:t4-scene-clusters} shows three random images from each of the eight FiveN research clusters. The panels identify cluster sizes and folds. Violet frames mark the validation fold.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.4\textheight,keepaspectratio]{fig_t4_scene_clusters.png}
-\caption{The eight scene clusters of one title (FiveN), three random images each. The clusters are the SigLIP2 research clusters (sig8). The title of each panel gives the cluster size and the scene fold it was assigned to; the violet frames mark clusters of fold 0, the validation fold. Images in one cluster resemble each other in layout, viewpoint and colour, so a random split would put near-copies of the same scene in both training and validation.}
+\caption{FiveN scene-cluster examples.}
 \label{fig:t4-scene-clusters}
 \end{figure}
+
+Figure~\ref{fig:t4-scene-fold-samples} displays two images per title and fold, sampled with a fixed seed from distinct scene clusters when available. The violet outline marks fold 0.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,keepaspectratio]{fig_t4_scene_fold_samples.png}
-\caption{Training images of every scene fold (rows, with the number of images) and title (columns), two per cell, drawn with a fixed random seed from different scene clusters where the fold holds more than one for that title (a single cluster otherwise). These are the SigLIP2 research folds (sig8). Fold 0, the validation fold, is outlined in violet. Inside a row the images of one title belong to a few scenes that no other fold contains; across rows the same title looks different.}
+\caption{Training screenshots by title and scene fold.}
 \label{fig:t4-scene-fold-samples}
 \end{figure}
+
+The frozen C-RADIOv3-H features in Figure~\ref{fig:t4-scene-folds}(a) place one quarter of images at or below the 0.66 nearest-neighbour similarity cut used to define the hard rows.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.3\textheight,keepaspectratio]{fig_t4_scene_folds.png}
-\caption{(a) Cosine similarity of every training image to its nearest other training image, measured on frozen C-RADIOv3-H features: the median is 0.75 and one image in four has no neighbour above 0.66 (the cut that defines our ``hard rows''). (b) Class composition of the five scene folds (SigLIP2 research folds). Whole clusters go to one fold, and the stratified group split keeps every title in every fold.}
+\caption{(a) Nearest-neighbour similarity on frozen features. (b) Title composition by scene fold.}
 \label{fig:t4-scene-folds}
 \end{figure}
 
@@ -106,6 +116,8 @@ Figure~\ref{fig:t4-scene-fold-samples} shows what the folds contain: each fold i
 \label{sec:t4-design}
 
 The final system is an ensemble of one strong, carefully adapted foundation model (DINOv3 ViT-7B~\citep{dinov3} with LoRA~\citep{lora}) and several diverse companions, combined with weights that depend on how certain each model is for the image at hand. Figure~\ref{fig:t4-pipeline} shows the whole pipeline; Table~\ref{tab:t4-components} lists the components.
+
+The base ensemble weights in the diagram sum to 1. The scene-grouped folds in the first row guide model selection and provide the held-out data used to fit the temperatures in the third row.
 
 \begin{figure*}[t]
 \centering
@@ -143,7 +155,7 @@ The final system is an ensemble of one strong, carefully adapted foundation mode
 \draw[flow] (pri) -- (out);
 \node[note] at (5.85,-10.6) {no test images or test predictions are used to fit any weight or prior};
 \end{tikzpicture}
-\caption{Task 4 pipeline. Weights are the base weights of the final recipe (they sum to 1). The scene-grouped folds (row 1) choose the model design and fit the temperatures in row 3.}
+\caption{Task 4 game-title classification pipeline.}
 \label{fig:t4-pipeline}
 \end{figure*}
 
@@ -155,8 +167,10 @@ The final system is an ensemble of one strong, carefully adapted foundation mode
 
 \paragraph{Companions and joint linear probe.} The companion group contains fine-tuned ConvNeXt-Large and ConvNeXt-Base~\citep{convnext} (DINOv3), EVA02-Large and EVA02-Base~\citep{eva02}, DINOv3 ViT-Large and DINOv2-Large~\citep{dinov2}, plus frozen-feature linear heads including C-RADIOv3-g~\citep{radio}. The joint probe concatenates frozen \texttt{[CLS, mean patch]} embeddings of 10 backbone views (DINOv3 ViT-7B at several depths and scales, C-RADIOv3-g, C-RADIOv3-H, C-RADIOv4-H, DINOv2-g, DINOv3 ViT-H+, Web-SSL 1B~\citep{webssl}; 56,576 dimensions). Each backbone block is centred with the training mean and $L_2$-normalised so every family counts equally. One linear layer with weight decay 0.15 and label smoothing 0.05 is trained for 30 epochs (two seeds), with no hidden layer, so that it cannot memorise scenes.
 
+$T_m$ in Table~\ref{tab:t4-components} is the scene-fold-0 temperature that minimises negative log-likelihood, as reported by the submission notebook.
+
 \begin{table}[H]\centering\small
-\caption{Ensemble components and their base weights in the final recipe. $T_m$ is the scene-fold-0 NLL-optimal temperature printed by the submission notebook.}\label{tab:t4-components}
+\caption{Final ensemble weights and temperatures.}\label{tab:t4-components}
 \begin{tabular}{@{}L{.40\linewidth}L{.12\linewidth}L{.12\linewidth}L{.26\linewidth}@{}}
 \toprule
 \textbf{Component} & \textbf{Weight} & \textbf{$T_m$} & \textbf{Role} \\
@@ -178,10 +192,10 @@ Fine-tuned and frozen companions & 0.09 & 0.677 & tie-breaking \\
 \subsubsection{Evaluation and Results}
 \label{sec:t4-eval}
 
-\paragraph{Validation.} Because random folds hide the scene shift (Figure~\ref{fig:t4-cvgap}), all model choices use scene fold 0 (5,113 images, never seen in training). Table~\ref{tab:t4-fold0} shows how each design step changed fold-0 errors.
+\paragraph{Validation.} We used scene-grouped validation to compare backbone depth, LoRA and head variants on held-out groups. Some blend weights also drew on public leaderboard results. Table~\ref{tab:t4-fold0} reports the research fold-0 comparisons. The submission notebook reports macro F1 \textbf{0.99482} with \textbf{21 errors in 5,113 images} from cached probabilities and split indices. It fits the temperatures and reports ensemble F1 on the same validation rows, so this number is a validation result after calibration. The notebook output does not establish whether its cached indices match the SigLIP2 research split.
 
 \begin{table}[H]\centering\small
-\caption{Scene fold 0 (5,113 images). The final row is the submission notebook's printed result.}\label{tab:t4-fold0}
+\caption{Scene-fold-0 validation results.}\label{tab:t4-fold0}
 \begin{tabular}{@{}L{.56\linewidth}L{.16\linewidth}L{.14\linewidth}@{}}
 \toprule
 \textbf{Model} & \textbf{Macro F1} & \textbf{Errors} \\
@@ -193,22 +207,25 @@ LoRA ViT-7B, 75\% depth, averaged head & 0.99115 & 42 \\
 LoRA, depth 30 on blocks 10--29 & 0.99172 & 40 \\
 Exact soup, refit head & 0.9937 & 30 \\
 Exact soup, refit head, with train prior & 0.99467 & 21 \\
-\textbf{Final ensemble (sub\_v90f recipe)} & \textbf{0.99482} & \textbf{21} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+Panel (a) compares scene-fold errors before and after the train-prior correction. Panel (b) varies the LoRA weight on the public leaderboard and assigns the remaining weight to frozen-feature heads.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.32\textheight,keepaspectratio]{fig_t4_lora_soup.png}
-\caption{(a) Errors on scene fold 0 for the single LoRA models, the soup and the heads, before and after the train prior. (b) Public leaderboard against the LoRA weight in the blend (the rest is a frozen-feature blend). The head refit and the prior remove most errors; the LoRA weight has a flat top near 0.7--0.85.}
+\caption{(a) Scene-fold errors for LoRA variants. (b) Public score by LoRA weight.}
 \label{fig:t4-lora-soup}
 \end{figure}
 
-\paragraph{Leaderboard.} The submission \texttt{sub\_v90f\_entropy\_dualhead\_md.csv} scored a public LB of \textbf{0.87351} (1st). It differs from earlier files only in Task 4. Table~\ref{tab:t4-milestones} lists milestones of the Task 4 work (the public score is the average over five tasks, so a Task 4 change of $\Delta$ F1 moves it by about $0.2\Delta$ if the tasks are weighted equally, which we assume but did not verify).
+\paragraph{Leaderboard.} The submission \texttt{sub\_v90f\_entropy\_dualhead\_md.csv} scored a public LB of \textbf{0.87351} (1st). Table~\ref{tab:t4-milestones} reports the public score across all five tasks. The course specifies a weighted aggregate, so we report observed leaderboard deltas directly.
+
+The milestone table begins after the data re-release and excludes submissions with a test-derived EM prior.
 
 \begin{table}[H]\centering\small
-\caption{Public LB milestones (all other tasks fixed within a pair of rows). Rule-excluded files (test-derived EM prior) are left out.}\label{tab:t4-milestones}
+\caption{Public leaderboard milestones.}\label{tab:t4-milestones}
 \begin{tabular}{@{}L{.12\linewidth}L{.58\linewidth}L{.2\linewidth}@{}}
 \toprule
 \textbf{File} & \textbf{Task 4 recipe} & \textbf{Public LB} \\
@@ -226,14 +243,20 @@ v85a & LoRA slot = exact soup with refit head & 0.87346 \\
 \end{tabular}
 \end{table}
 
-Most of the gain came from three steps: more and different fine-tuned backbones (+0.0064 from v25a to v32), the LoRA ViT-7B (+0.0030 from v74b\_clean to v79c\_clean) and the train prior (+0.0020). The last two steps (soup, calibrated entropy pooling) add 0.0004 and 0.00005, which is within the noise of a public leaderboard. We kept them because fold 0 supports them and no test images or test predictions are used to fit any weight or prior.
+\paragraph{Pipeline improvement.} The first post-release baseline, v25a, combined ConvNeXt-T and EVA02-S (public LB 0.85787). Adding ConvNeXt-S and then ConvNeXt-B brought the four-model blend to 0.86169. Adding frozen heads and increasing their share to 50\% lifted the score to 0.86430. This separates the early gains from fine-tuned backbones ($+0.00382$) from the subsequent gains from frozen features and blend weights ($+0.00261$).
 
-\paragraph{Every submission on one timeline.} Figure~\ref{fig:t4-timeline} plots the public score of every Task 4 submission from 12 to 24 November. From 12 November (after the data re-release) the Task 1, 2, 3 and 5 predictions were frozen, so inside a pair of related files the Task 4 predictions are the only difference and a score change measures Task 4 alone: $\Delta\text{LB}\approx0.2\,\Delta F_1$. One caveat: the Task 1 decision rule changed once, when we moved from a rank-based cut to a fixed out-of-fold threshold (clean files from 17 November), so differences across that boundary also contain a small Task 1 part. The right axis translates the score into the implied public Task 4 macro F1, $5\cdot\text{LB}-3.389$, which assumes equal task weights and the other tasks at their validation scores; it is an estimate, not an official number.
+On research fold 0, the frozen ViT-7B head improved from 0.9749 at the last block to 0.9834 at 75\% depth. Adapting the 75\% model with LoRA raised it to 0.99115 ($+0.00775$ macro F1 over the frozen head at the same depth). On the public leaderboard, v79c combined LoRA with a revised companion blend and raised the score from 0.86812 to 0.87109 versus v74b\_clean. Applying the fixed training prior to v79c in v81b then raised it to 0.87307 ($+0.00198$ on the same base recipe).
+
+With the same training prior on research fold 0, refitting the head for a single LoRA adapter reduced errors from 30 to 22. The refitted two-adapter soup reached 21 errors. The head refit accounts for most of the observed reduction in this comparison. On the leaderboard, the switch to the refitted soup raised the score to 0.87346. The final v90f recipe scored 0.87351 ($+0.00005$). Temperature scaling, entropy weighting, multi-depth members, and changes to the blend entered together, so this delta cannot separate their effects.
+
+\paragraph{Every submission on one timeline.} Figure~\ref{fig:t4-timeline} tracks public leaderboard scores after the re-release. Comparisons isolate Task 4 only where the other predictions and the evaluation data match. Some versions also revised Task 1's decision rule. The right axis is an illustrative estimate based on equal task weights and validation scores for the other tasks.
+
+Figure~\ref{fig:t4-timeline} covers 50 submissions, with v90f placed at the date of the final snapshot. Green marks the path to the final recipe, grey marks dropped variants, and red hatching marks the rule-excluded EM prior. The clean LoRA ViT-7B run v79b (0.87104) was the first on this path to pass the strongest EM file (0.87064).
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,keepaspectratio]{fig_t4_timeline.png}
-\caption{Public leaderboard score of all 50 Task 4 submissions (12--24 November; the date of v90f is that of the final snapshot). Green: files on the path to the final recipe. Grey: tested and dropped. Red hatched squares: files that used the EM class prior estimated from test predictions, which the TA ruled out on 16 November. The right axis is the implied Task 4 macro F1. The clean path overtakes the best EM file (0.87064) only with the LoRA ViT-7B (v79b, 0.87104); after v85a every change is within noise.}
+\caption{Task 4 public leaderboard timeline.}
 \label{fig:t4-timeline}
 \end{figure}
 
@@ -241,15 +264,19 @@ Three things stand out. First, a large part of the climb (12--15 November) came 
 
 \paragraph{Which backbones were tried, and which survived.} Figure~\ref{fig:t4-backbones} and Tables~\ref{tab:t4-backbones-ft}--\ref{tab:t4-backbones-lora} list every backbone family we evaluated (including PE-Core~\citep{pecore}, AIMv2~\citep{aimv2} and EfficientNetV2~\citep{efficientnetv2}), with the validation numbers we had for it. The fine-tuned models all score 0.97--0.99 under random folds; the frozen heads range from 0.76 to 0.93 on held-out scenes. The pattern is stable: a larger or better-pretrained backbone helps (ConvNeXt-L and -B above -S and -T, EVA02-B above EVA02-S), models with a different pre-training (EVA02, DINOv2, ViT) add diversity, and the DINOv3 ViT-7B at 75\% depth is the strongest frozen representation by a wide margin (0.934 on scene-group CV against 0.893 for the next best head).
 
+Panel (c) uses open circles for random folds, filled circles for held-out scenes and diamonds for the three-fold scene split. Green marks models in the final blend and grey marks models tested and dropped. The random-fold to scene-fold drop ranges from 4 to 15 percentage points across the heads and is smallest for the ViT-7B layer-75\% head.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,keepaspectratio]{fig_t4_backbones.png}
-\caption{Backbones evaluated for Task 4. (a) Random-fold OOF of the fine-tuned models. (b) Errors of the LoRA ViT-7B variants on scene fold 0 (lower is better). (c) Linear heads on frozen features, random folds (open circle) against held-out scenes (filled; diamonds are the three-fold scene split). Green: in the final blend; grey: tested and not used. Every head loses 4--15 points when scenes are held out, and the ViT-7B layer-75\% head loses least.}
+\caption{(a) Fine-tuned model validation. (b) LoRA ViT-7B variant errors. (c) Frozen-head validation.}
 \label{fig:t4-backbones}
 \end{figure}
 
+The two-fold fine-tuned runs share 21,031 OOF rows. The frozen linear heads use \texttt{[CLS, mean patch]}. Their comparisons cover random folds, the 25\% least duplicated rows, scene groups with 8 or 30 clusters per title, and the three-fold scene split.
+
 \begin{table}[H]\centering\small
-\caption{Fine-tuned models: random-fold OOF macro F1 (21,031 shared rows for the 2-fold runs), the scene-fold value when we have it, and whether the model is in the final blend.}\label{tab:t4-backbones-ft}
+\caption{Fine-tuned backbone validation.}\label{tab:t4-backbones-ft}
 \begin{tabular}{@{}L{.30\linewidth}L{.08\linewidth}L{.08\linewidth}L{.08\linewidth}L{.36\linewidth}@{}}
 \toprule
 \textbf{Model} & \textbf{OOF} & \textbf{Scene} & \textbf{Final} & \textbf{Note} \\
@@ -271,7 +298,7 @@ DINOv3 ViT-L (full-train only) & --- & --- & yes & no OOF (full-train refit only
 \end{table}
 
 \begin{table}[H]\centering\small
-\caption{Frozen-feature linear heads on \texttt{[CLS, mean patch]}: random folds, hard rows (25\% least duplicated), scene-group CV with 8 clusters per title (sig8) and with 30 (sig30), and the three-fold scene split (SGKF). Missing values were not computed.}\label{tab:t4-backbones-fr}
+\caption{Frozen linear-head validation.}\label{tab:t4-backbones-fr}
 \begin{tabular}{@{}L{.31\linewidth}L{.09\linewidth}L{.09\linewidth}L{.09\linewidth}L{.09\linewidth}L{.09\linewidth}L{.07\linewidth}@{}}
 \toprule
 \textbf{Head} & \textbf{Random} & \textbf{Hard} & \textbf{sig8} & \textbf{sig30} & \textbf{SGKF} & \textbf{Final} \\
@@ -295,8 +322,10 @@ ViT-7B head layer 75\% & 0.9862 & 0.9852 & 0.9343 & 0.9629 & 0.9683 & yes \\
 \end{tabular}
 \end{table}
 
+The LoRA variant names encode depth and the adapted layers. For example, l75 cuts at block 30 and adapts blocks 20--29.
+
 \begin{table}[H]\centering\small
-\caption{LoRA ViT-7B variants on scene fold 0 (5,113 images). The name encodes the cut depth and the first adapted block (l75 = cut at block 30, adapters on blocks 20--29).}\label{tab:t4-backbones-lora}
+\caption{LoRA ViT-7B validation.}\label{tab:t4-backbones-lora}
 \begin{tabular}{@{}L{.32\linewidth}L{.10\linewidth}L{.08\linewidth}L{.08\linewidth}L{.30\linewidth}@{}}
 \toprule
 \textbf{Variant} & \textbf{F1} & \textbf{Errors} & \textbf{Final} & \textbf{Note} \\
@@ -313,33 +342,41 @@ LoRA soup + refit head & 0.99370 & 30 & yes & exact B@A average \\
 
 \paragraph{Why random OOF misled us.} We re-scored the eight submitted recipes that differ only in Task 4 (no EM prior) on the 21,031 training rows that every run covers, and compared them with the public score (Figure~\ref{fig:t4-oof-lb}). Random-fold OOF ranks them with Spearman correlation 0.69; restricting to the 25\% hard rows (no close duplicate in the rest of the training set, defined from training data only) raises it to 0.86. Both get the sign right when a fine-tuned model is added or replaced. Both miss the frozen-share steps: from v30 to v31 random OOF barely moves ($+0.00006$) and hard-row OOF falls, while the leaderboard gains $0.0017$; from v31 to v32 random OOF falls while the leaderboard gains $0.0009$; from v32 to v37n both fall while the leaderboard still gains. Out-of-fold scores pick fine-tuned members well but cannot tell how much frozen-feature weight a new scene needs. The consequence for our process: we kept the fine-tuned and frozen halves at 50/50, a value that the leaderboard (v30, v31, v32) and later the scene-fold proxy agreed on, and we stopped trusting OOF differences below about 0.001.
 
+Panels (a) and (b) join the eight recipes in submission order. Panel (c) compares each OOF change with five times the public leaderboard change. Red labels mark opposite directions.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,keepaspectratio]{fig_t4_oof_vs_lb.png}
-\caption{Random OOF and hard-row OOF against the public score for the eight Task 4 recipes without EM prior. (a, b) Level plots; the line joins the recipes in submission order. (c) Step by step, the OOF change of each step next to the leaderboard change multiplied by five (the Task 4 macro-F1 change it implies). Red labels mark steps where the OOF variant moves the other way from the leaderboard.}
+\caption{(a) Random-fold OOF and public score. (b) Hard-row OOF and public score. (c) Score changes between recipes.}
 \label{fig:t4-oof-lb}
 \end{figure}
 
 \paragraph{Blend-weight curves on the leaderboard.} Because the Task 4 file is the only change, a clean one-factor curve of public score against a weight is a cheap experiment. Figure~\ref{fig:t4-lbcurves} collects six of them. The frozen share (a) and the ViT-7B share of the frozen half (b) were still rising when we stopped, and the scene-fold proxy agreed with the 7B share but not with the fine-tuned share (f). The LoRA weight (c) peaks at 0.7--0.85. The train-prior exponent (e) rises monotonically to $a=1$, which is also the principled value (uniform target prior for macro F1), so we did not search further; the EM exponent (d) peaks at $a=1$ and falls at $1.5$. After these curves flattened, further weight tuning moved the score by less than 0.0003 and we stopped.
 
+The frozen-head share in panel (a) uses v30--v32. Panel (b) uses the EM-era files. Panel (d) shows the rule-excluded EM prior on two bases. Panel (e) varies the train-prior exponent on the LoRA blend. Panel (f) fixes the ViT-7B share of frozen heads at 0.7.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,keepaspectratio]{fig_t4_lb_curves.png}
-\caption{One-factor leaderboard curves (all other parts of the file identical). (a) Frozen-head share, files v30/v31/v32. (b) ViT-7B share of the frozen weight (EM-era files). (c) LoRA weight, clean files. (d) EM prior exponent on two bases (rule-excluded; red). (e) Train-prior exponent on the LoRA blend (allowed). (f) Fine-tuned share with the 7B share fixed at 0.7.}
+\caption{(a) Frozen-head share. (b) ViT-7B share of frozen heads. (c) LoRA weight. (d) EM prior exponent. (e) Training-prior exponent. (f) Fine-tuned share.}
 \label{fig:t4-lbcurves}
 \end{figure}
 
-\paragraph{Scene-grouped validation against the leaderboard.} Section~\ref{sec:t4-design} says that all model choices were made on scene folds. The leaderboard gives an independent check of that claim, and the answer is mixed (Figure~\ref{fig:t4-scene-vs}, Table~\ref{tab:t4-scorecard}). Scene folds predicted the sign correctly for the large steps: the frozen-head blend, the LoRA model (fold-0 prediction $+0.0082$, leaderboard-implied $+0.0108$), the soup with the prior, and the post-hoc prior over training-time logit adjustment. They got the sign wrong for the small ones, the largest miss being the kNN smoothing of predictions with their neighbours, for which scene-grouped CV predicted $+0.0045$ and the leaderboard measured $-0.00077$ (about $-0.0039$ in F1). A held-out training scene is still closer to its training neighbours than a new scene is to any of them, so a method that exploits neighbour structure looks better on scene folds than it is. The practical rule we took from this: believe scene CV for large effects and for models, not for effects below 0.002 F1.
+\paragraph{Scene-grouped validation against the leaderboard.} We compared the direction of changes on scene validation with the direction observed on the public leaderboard (Figure~\ref{fig:t4-scene-vs}, Table~\ref{tab:t4-scorecard}). Scene folds predicted the sign correctly for the large steps: the frozen-head blend, the LoRA model (fold-0 prediction $+0.0082$, leaderboard-implied $+0.0108$), the soup with the prior, and the post-hoc prior over training-time logit adjustment. They got the sign wrong for the small ones, the largest miss being the kNN smoothing of predictions with their neighbours, for which scene-grouped CV predicted $+0.0045$ and the leaderboard measured $-0.00077$ (about $-0.0039$ in F1). A held-out training scene is still closer to its training neighbours than a new scene is to any of them, so a method that exploits neighbour structure looks better on scene folds than it is. The practical rule we took from this: believe scene CV for large effects and for models, not for effects below 0.002 F1.
+
+Panel (a) compares two frozen-head blends on three scene folds. With the ViT-7B head at share 0.7 (violet), the scene-fold optimum for the fine-tuned share moves from 0.5 to 0.3. On the public leaderboard, 0.4 scores below 0.5. Panel (b) shows the validation change (violet dot) and five times the leaderboard change (square) for six decisions. Green marks agreement in direction and red marks disagreement.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,keepaspectratio]{fig_t4_scene_vs_lb.png}
-\caption{(a) Fine-tuned share of the blend on three scene folds, with the four frozen heads of the early recipe (grey) and with the ViT-7B head at share 0.7 (violet); with the 7B head the optimum moves from 0.5 to 0.3, but on the leaderboard 0.4 was worse than 0.5. (b) Prediction of scene CV or fold 0 (violet dot) against the leaderboard change times five (square) for six decisions; green: same sign, red: opposite sign.}
+\caption{(a) Fine-tuned blend share on scene folds. (b) Scene-validation and leaderboard changes.}
 \label{fig:t4-scene-vs}
 \end{figure}
 
+Table~\ref{tab:t4-scorecard} compares F1 measured on held-out scenes with the public leaderboard change. The comparison holds other task predictions fixed except where indicated.
+
 \begin{table}[H]\centering\small
-\caption{Did scene-grouped validation predict the sign of the leaderboard change? F1 values are on held-out scenes; the leaderboard change is as measured (public score, Task 4 the only difference, except where noted).}\label{tab:t4-scorecard}
+\caption{Scene-validation and leaderboard agreement.}\label{tab:t4-scorecard}
 \begin{tabular}{@{}L{.30\linewidth}L{.27\linewidth}L{.17\linewidth}L{.11\linewidth}@{}}
 \toprule
 \textbf{Decision} & \textbf{Scene-CV / fold-0 evidence} & \textbf{Leaderboard} & \textbf{Sign} \\
@@ -356,12 +393,12 @@ kNN smoothing of predictions & F1 0.9697 $\to$ 0.9742 & $-0.00077$ & wrong \\
 \end{tabular}
 \end{table}
 
-\paragraph{Decision log.} Figure~\ref{fig:t4-decision-log} shows every Task 4 experiment with the change in public LB, coloured by whether we kept it, dropped it or excluded it for rule reasons; the rows are in \texttt{data/decision\_log\_t4.csv}.
+\paragraph{Decision log.} Figure~\ref{fig:t4-decision-log} shows every Task 4 experiment with its change in the public score. Green marks retained experiments, grey marks discarded experiments, and red hatching marks experiments excluded by the competition rules. The underlying rows are in \texttt{data/decision\_log\_t4.csv}.
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{decision_log_t4.pdf}
-\caption{Task 4 decision log: change in public LB per experiment, kept versus dropped versus rule-excluded. Green = kept, grey = dropped, red hatched = excluded by the competition rules.}
+\caption{Task 4 experiment decision log.}
 \label{fig:t4-decision-log}
 \end{figure}
 
@@ -369,10 +406,12 @@ kNN smoothing of predictions & F1 0.9697 $\to$ 0.9742 & $-0.00077$ & wrong \\
 
 \paragraph{Where the model errs.} Take the LoRA soup with refit head on scene fold 0 (Table~\ref{tab:t4-fold0}, 30 errors without the prior). 16 of its 30 errors are FiveN (6) or Free Fried (10) images predicted as 7-11 Knights, the largest training class (prior 0.394); the model had learned the training class mix. The uniform-prior adjustment removes this bias directly: errors of the same model fell from 30 to 21 on fold 0 (Figure~\ref{fig:t4-lora-soup}a, Figure~\ref{fig:t4-confusion}), and the public LB rose by 0.0020 when the same adjustment was added to the LoRA blend. No fold-0 error had a confidence above 0.9. The original screenshots are only $230\times120$ pixels and we upsample them by about 1.8, so fine detail such as HUD text is limited.
 
+Panel (c) uses a log count scale for confidence after the prior adjustment. Overall, 2.3\% of the fold-0 images have confidence below 0.6.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,keepaspectratio]{fig_t4_confusion.png}
-\caption{Scene fold 0 (5,113 images), LoRA soup with refit head. (a) Confusion matrix of the argmax decision: 30 errors, 16 of them FiveN or Free Fried images called 7-11 Knights. (b) The same model with the uniform train prior: 21 errors, and the 7-11 Knights column nearly empty. (c) Confidence of correct decisions and errors after the prior (log scale): the 21 errors all sit below confidence 0.9, and 2.3\% of the images are below 0.6.}
+\caption{(a) Confusion before prior correction. (b) Confusion after prior correction. (c) Prediction confidence on scene fold 0.}
 \label{fig:t4-confusion}
 \end{figure}
 
@@ -382,7 +421,7 @@ Figure~\ref{fig:t4-confusion} shows the errors that are left after the prior. Th
 
 \paragraph{Fine-tuning and frozen features are complementary.} On scene folds a fine-tuned ConvNeXt-S beat every frozen head, yet blending the two at about 50/50 beat either alone (0.9697 against 0.9635 for the fine-tuned model alone in our proxy study). This is why the final recipe keeps the joint linear probe and the frozen heads inside the ensemble even though the LoRA soup carries 77\% of the base weight.
 
-\paragraph{Behaviour on the shifted test set (leaderboard observation).} Random-fold OOF ranked models poorly against the public leaderboard: it underrated larger backbones and gave no sign of the benefit of frozen features (Task 4 changes with OOF gain $+0.0005$ produced $+0.0012$ on the LB). We learned this from leaderboard results, not from inspecting test images. No test images or test predictions are used to fit any weight or prior. Under the assumption of equal task weights and Task 1--3 and 5 scores close to their validation values, the public LB 0.87351 implies a Task 4 macro F1 of about 0.98 on the test set (our own estimate, not an official number), against 0.995 on scene fold 0, so the test set is harder than fold 0 and there is still headroom.
+\paragraph{Validation and public leaderboard.} Random-fold OOF understated the benefit of frozen heads. In one early comparison a frozen head and a larger fine-tuned model helped on the leaderboard despite small OOF movements. We report the notebook's validation macro F1 and the aggregate public leaderboard separately. Per-title results on new labelled scenes would help quantify where the ensemble still struggles.
 
 \subsubsection{Common Mistakes and Failed Experiments}
 
@@ -394,17 +433,21 @@ Figure~\ref{fig:t4-confusion} shows the errors that are left after the prior. Th
 
 \paragraph{The data re-release: a Task 4 score that did not move, and why.} This was the most expensive mistake of the project, so we give the whole story.
 
-\emph{First release (until 12 November).} Changing Task 4 did nothing to the public score. Submissions with the datacard label order, the Overview order and string labels (v6, v6b, v10c) all scored the same on Task 4, and our 0.9889 out-of-fold macro F1 was invisible. We therefore built \textbf{constant-base probes}: a file with Task 1 all~1 and Tasks 2, 3 and 5 all~0, whose public score (0.27401 with datacard names in Task 4) is the base; any change in Task 4 then shows up as $0.2\times$ its macro F1. Figure~\ref{fig:t4-probes} and Table~\ref{tab:t4-probes} give the results. Only \emph{integer text} labels (\texttt{2}, not \texttt{2.0}, not a name) were scored at all; names and floats added nothing. Every integer mapping we tried gave a macro F1 of 0.19--0.20, which is chance for five classes; seven integer probes fit an independence model of digit shares with an RMSE of 0.0004. Probes that sorted the rows by id or sent contiguous blocks of rows also stayed at chance, so the truth did not follow \texttt{test.csv} row order, filename order or blocks. A file with a perfect-looking Task 4 (v16a, datacard integers) scored 0.76297, exactly the value predicted with Task 4 at chance (0.7626). The TA confirmed on 10 November that Task 4 uses the datacard mapping (0 7-11 Knights, 1 FiveN, 2 Free Fried, 3 PUBE, 4 Roblock) and that every task follows \texttt{test.csv} row order, which our file already did; we reported the evidence back.
+\emph{First release (until 12 November).} Changing Task 4 did nothing to the public score. Submissions with the datacard label order, the Overview order and string labels (v6, v6b, v10c) all scored the same on Task 4, and our 0.9889 out-of-fold macro F1 was invisible. We therefore built \textbf{constant-base probes}: a file with Task 1 all~1 and Tasks 2, 3 and 5 all~0, whose public score (0.27401 with datacard names in Task 4) is the base; any change in Task 4 then shows up as its weighted contribution to the aggregate. Figure~\ref{fig:t4-probes} and Table~\ref{tab:t4-probes} give the results. Only \emph{integer text} labels (\texttt{2}, not \texttt{2.0}, not a name) were scored at all; names and floats added nothing. Every integer mapping we tried gave a macro F1 of 0.19--0.20, which is chance for five classes; seven integer probes fit an independence model of digit shares with an RMSE of 0.0004. Probes that sorted the rows by id or sent contiguous blocks of rows also stayed at chance, so the truth did not follow \texttt{test.csv} row order, filename order or blocks. A file with a perfect-looking Task 4 (v16a, datacard integers) scored 0.76297, exactly the value predicted with Task 4 at chance (0.7626). The TA confirmed on 10 November that Task 4 uses the datacard mapping (0 7-11 Knights, 1 FiveN, 2 Free Fried, 3 PUBE, 4 Roblock) and that every task follows \texttt{test.csv} row order, which our file already did; we reported the evidence back.
+
+The plot subtracts the base score of 0.27401. Grey marks the unscored or partially scored formats. Violet marks integer labels and diamonds show the chance-model predictions for the row-order probes.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,keepaspectratio]{fig_t4_probes.png}
-\caption{Constant-base probes on the first data release (public LB minus the base 0.27401; the base has Task 1 all 1, Tasks 2, 3, 5 all 0 and the datacard names in Task 4, which score zero). Grey: formats that are not scored or only partly; violet: pure integer labels. The band is chance level (macro F1 0.19--0.20); diamonds are the predictions of a chance model for the probes that test row order.}
+\caption{Constant-base leaderboard probes.}
 \label{fig:t4-probes}
 \end{figure}
 
+In Table~\ref{tab:t4-probes}, LB is the public score and $\Delta$ is relative to the reference listed for that probe.
+
 \begin{table}[H]\centering\small
-\caption{Selected Task 4 probes of the first release and the re-release fix. LB is the public score; $\Delta$ is relative to the stated reference.}\label{tab:t4-probes}
+\caption{Data-release leaderboard probes.}\label{tab:t4-probes}
 \begin{tabular}{@{}L{.12\linewidth}L{.55\linewidth}L{.12\linewidth}L{.12\linewidth}@{}}
 \toprule
 \textbf{Date} & \textbf{File and Task 4 content} & \textbf{LB} & \textbf{$\Delta$} \\
@@ -419,17 +462,17 @@ Figure~\ref{fig:t4-confusion} shows the errors that are left after the prior. Th
 6 Nov & constant base, rows sorted by id / contiguous blocks & 0.31327 / 0.31307 & $+0.039$ \\
 6 Nov & v16a: best Task 4 integers in datacard order & 0.76297 & chance \\
 12 Nov & v24b: old predictions in old order (new data) & 0.72035 & --- \\
-12 Nov & \textbf{v25a: same predictions, realigned by \texttt{file\_name}} & \textbf{0.85787} & $+0.1375$ \\
+12 Nov & \textbf{v25a: same predictions, realigned by \texttt{file\_name}} & \textbf{0.85787} & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\emph{Re-release (12 November).} The organisers regenerated Tasks 2 and 5 and re-issued Task 4. The new \texttt{test.csv} has the columns \texttt{id}, \texttt{file\_name}, \texttt{label}, i.e.\ each answer id is tied to an image by name. Comparing it with the old list showed that the old row order agreed with the new one on only 21\% of the rows, which is the chance level for five classes. That explained every probe above: for two weeks we had been scoring Task 4 predictions that were shifted against the truth. We re-ordered our unchanged predictions by \texttt{file\_name}; the public score jumped from 0.72035 (v24b) to 0.85787 (v25a), a gain of $+0.1375$ without retraining a single model. Lessons: (i) join predictions to the test list by \texttt{file\_name}, never by position; (ii) when a whole task does not respond to any change, suspect the plumbing before the model; (iii) constant-base probes isolate one task's contribution and cost only a few submissions.
+\emph{Re-release (12 November).} The organisers regenerated Tasks 2 and 5 and re-issued Task 4. The new \texttt{test.csv} has the columns \texttt{id}, \texttt{file\_name}, \texttt{label}, i.e.\ each answer id is tied to an image by name. Comparing it with the old list showed that the old row order agreed with the new one on only 21\% of the rows, which is the chance level for five classes. That explained every probe above: for two weeks we had been scoring Task 4 predictions that were shifted against the truth. We re-ordered our unchanged Task 4 predictions by \texttt{file\_name}. The aggregate public score moved from 0.72035 (v24b) to 0.85787 (v25a) across the re-release. Since Tasks 2 and 5 also changed, this comparison does not isolate the score effect of the Task 4 fix. Lessons: (i) join predictions to the test list by \texttt{file\_name}, never by position; (ii) when a whole task does not respond to any change, suspect the plumbing before the model; (iii) constant-base probes isolate one task's contribution and cost only a few submissions.
 
 \paragraph{Experiments that did not help.} Tables~\ref{tab:t4-fail-a} and~\ref{tab:t4-fail-b} list the Task 4 experiments that failed or only looked good in validation, with the measured effect and the lesson. Public-score changes are against the immediately preceding best file with only Task 4 changed; fold-0, OOF and scene-CV values are validation numbers and are labelled as such. The same experiments appear as the grey and red bars of the decision log (Figure~\ref{fig:t4-decision-log}).
 
 \begin{table}[H]\centering\footnotesize
-\caption{Failed experiments, part 1: backbones, training recipes and heads.}\label{tab:t4-fail-a}
+\caption{Backbone, training and head experiments.}\label{tab:t4-fail-a}
 \begin{tabular}{@{}L{.22\linewidth}L{.36\linewidth}L{.34\linewidth}@{}}
 \toprule
 \textbf{Experiment} & \textbf{Measured effect} & \textbf{Lesson} \\
@@ -449,7 +492,7 @@ LoRA on all blocks 10--29 or the soup with a third adapter & 40 vs 42 errors for
 \end{table}
 
 \begin{table}[H]\centering\footnotesize
-\caption{Failed experiments, part 2: blending, class prior and post-processing.}\label{tab:t4-fail-b}
+\caption{Blending, prior and post-processing experiments.}\label{tab:t4-fail-b}
 \begin{tabular}{@{}L{.22\linewidth}L{.36\linewidth}L{.34\linewidth}@{}}
 \toprule
 \textbf{Experiment} & \textbf{Measured effect} & \textbf{Lesson} \\
@@ -467,14 +510,15 @@ The v87 round (soup plus two-view head, raw l75, other base blend, logit-adjuste
 \end{tabular}
 \end{table}
 
-\paragraph{Limitations.} Fold 0 is a single scene fold, so 21 errors versus 20 or 22 is within noise; we resisted tuning on such differences. The final ensemble weights were set by hand and by the public leaderboard history, not by a nested search, and the full-train models have no out-of-fold prediction of their own. The intermediate steps between v85a and v90f (v88--v91) are not documented in our log; \todo{list v88--v91 results if the team wants a complete ablation of the calibration and entropy-pooling steps.}
+\paragraph{Limitations.} The research comparisons use a single held-out scene fold for the later LoRA runs. Small differences such as 21 versus 22 errors provide weak evidence about performance on new scenes. The team used scene validation and public leaderboard history to choose the ensemble, and some full-train members have no out-of-fold predictions of their own. The late variants do not supply a matched ablation for each final pooling component. A separate labelled set of unseen scenes would allow a direct comparison of those components and independent evaluation after calibration.
 
 \subsubsection{Domain Interpretation and Business Impact}
 
 The course scenario for Task 4 gives three operational pains: about 2,000 support tickets per day with screenshots that take 10 or more minutes each to route, 50,000+ campaign screenshot submissions of which only 3\% can be checked by hand, and 100,000+ gameplay images posted weekly that cannot be auto-tagged for contests, moderation or trend tracking. If the triage of the tickets alone took 10 minutes each, it would cost more than 330 person-hours per day, so an automated title detector pays off mainly by removing this routing step and by making full verification of campaign submissions possible.
 
-The cost of an error depends on the use. For ticket routing, a wrong title sends the ticket to the wrong specialist queue; for campaigns, a false match may reward a screenshot from another game. A deployed system should therefore send low-confidence predictions to a human. Our model is well calibrated per model (temperatures are fitted on held-out scenes), but the entropy-weighted output is not a calibrated probability, so a review threshold should be set on a labelled validation set of new scenes. On the competition test set the system is less certain than on fold 0 (leaderboard-implied macro F1 near 0.98 against 0.995), which warns that new maps or new art styles will lower accuracy.
+The cost of an error depends on the use. For ticket routing, a wrong title sends the ticket to the wrong specialist queue; for campaigns, a false match may reward a screenshot from another game. A deployed system should therefore send low-confidence predictions to a human. The component temperatures are fitted on scene validation. Before using confidence to route tickets, measure calibration and the error rate at each review threshold on a separate labelled set of new scenes.
 
-Deployment caveats: (i) the class mix of live traffic differs from the training mix, and our uniform-prior rule assumes macro-F1-style equal importance of the titles; for ticket volume the real prior should be used instead. (ii) The ViT-7B with adapters and the many companions need a large GPU; a production system would distil the ensemble into one smaller model or keep only the LoRA soup. \todo{measure inference time per image for the LoRA soup and for the full ensemble.} (iii) Screenshots from new game updates will be new scenes, so the model should be re-validated with scene-grouped folds after each content release.
+Deployment caveats: (i) the class mix of live traffic differs from the training mix, and our uniform-prior rule assumes macro-F1-style equal importance of the titles; for ticket volume the real prior should be used instead. (ii) The ViT-7B with adapters and the many companions need a large GPU; a production system would distil the ensemble into one smaller model or keep only the LoRA soup. An inference benchmark should compare latency per image and GPU memory for the LoRA soup and the full ensemble. (iii) Screenshots from new game updates will be new scenes, so the model should be re-validated with scene-grouped folds after each content release.
 
+\endgroup
 \end{document}
