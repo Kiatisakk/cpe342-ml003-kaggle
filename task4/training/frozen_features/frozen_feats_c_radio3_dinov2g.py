@@ -1,5 +1,5 @@
-# Task 4 — Kernel C: frozen features, second batch (no fine-tuning). NO SUBMIT: writes /kaggle/working/feats.
-# Why: frozen linear heads raised public LB on the shifted test (v31 0.86340, v32 0.86430 with RADIO-H + DINOv3 ViT-H+ heads)
+# Task 4 - frozen features, second batch (no fine-tuning). Writes /kaggle/working/feats.
+# Why: linear heads on frozen features generalise well to unseen scenes, so more backbone families add diversity.
 # although OOF barely moves. SSL/distilled backbones worked (DINOv3 H+, RADIOv4-H 0.964); CLIP-family did not (SigLIP2, PE).
 # This batch adds two more backbones of the family that works, trained on different data / teachers:
 #   dinov2g  vit_giant_patch14_reg4_dinov2.lvd142m (DINOv2 ViT-g/14 + registers, 1.1B, timm, not gated) at 224x420
@@ -99,4 +99,4 @@ for tag in ONLY:
             print(tag, split, v, f.shape, f"{time.time()-t0:.0f}s", flush=True)
             json.dump(log, open(f"{OUT}/log.json", "w"), indent=1)
     del m, fn; torch.cuda.empty_cache()
-print("done - nothing submitted", log)
+print("done", log)

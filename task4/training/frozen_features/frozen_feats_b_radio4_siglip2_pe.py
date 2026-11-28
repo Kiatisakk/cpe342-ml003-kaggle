@@ -1,4 +1,4 @@
-# Task 4 — Kernel B: frozen features from non-DINOv3 foundation models (no fine-tuning). NO SUBMIT: writes /kaggle/working/feats.
+# Task 4 - frozen features from non-DINOv3 foundation models (no fine-tuning). Writes /kaggle/working/feats.
 # Why: the frozen DINOv3 ViT-H+ head (OOF 0.964 alone) took weight 0.4 in the nested blend (0.99222 -> 0.99281) because it errs
 # differently from the fine-tuned models. Backbones trained with other objectives should add more of that diversity:
 #   radio   nvidia/C-RADIOv4-H (653M, distilled from DINOv3-7B + SigLIP2-g + SAM3; HF remote code, not gated)
@@ -102,4 +102,4 @@ for tag in ONLY:
             print(tag, split, v, f.shape, f"{time.time()-t0:.0f}s", flush=True)
             json.dump(log, open(f"{OUT}/log.json", "w"), indent=1)
     del m, fn; torch.cuda.empty_cache()
-print("done - nothing submitted", log)
+print("done", log)

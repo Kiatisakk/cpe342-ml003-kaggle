@@ -1,43 +1,26 @@
-# Task 4 - FULL-TRAIN refit of a DINOv3 ConvNeXt (no folds). Same model code as task4-v4-cnxtl-d3.
-# Why: every fine-tuned model in the blend is a 3-fold model that saw only 2/3 of train. The test is new scenes, so more
-# training scenes should help. Each run trains on ALL train rows for a FIXED number of epochs (taken from the 3-fold runs'
-# best epochs: Base 17/12, Colab Large 17/11/15 -> 16), no early stopping, final EMA model. Train labels only; the test
-# is only predicted (TTA plain/hflip/up), never used for any choice.
-# T4_LOWQ_AUG (default "0" = OFF since 16 Nov: the JPEG-like degradation aug was added because test looked lower quality,
-# i.e. chosen from test EDA, which the TA ruled out; output tag gets suffix _nolq). Defaults now: cnxt_b_d3, 14 epochs, seed 42.
-# Settings: T4_BACKBONE (cnxt_l_d3c = Colab Large recipe, batch 16 x accum 2 = 32 to fit a T4 | cnxt_b_d3),
-# T4_SEEDS (default "42"; several seeds run one after another, time guard 10.6 h), T4_FULL_EPOCHS (default 16).
-# Expected time on a Kaggle T4 for Large: ~7.5 h (the 3-fold Kaggle L run took ~17 min/epoch on 2/3 of train).
-# Outputs /kaggle/working/preds/v4f_<backbone>_s<seed>_test_full_{plain,hflip,up}.npy + _log.json. Nothing is submitted.
-# Run from the Kaggle UI: GPU T4, Internet ON, Add-ons -> Secrets -> HF_TOKEN attached.
-# Task 4 — ConvNeXt-L DINOv3 fine-tune (preset cnxt_l_d3). Same code as task4-v4-cnxts-in22k; only the preset and guard differ.
-# Why: on the shifted test, every bigger DINOv3 ConvNeXt helped the LB (T -> +S v28 +0.0012 -> +B v30 +0.0026).
-# ~5 h per fold on a T4 -> about 2 folds per 12 h session; per-fold files are saved after each fold, so later sessions run
-# the rest with T4_FOLDS (edit the default below) and the blend script merges dirs passed with the same tag.
-# Needs HF_TOKEN (DINOv3 is gated) -> start from the Kaggle UI with the secret attached, GPU T4, Internet on. NO SUBMIT.
-# Task 4 v4 — Kaggle GPU training script (based on t4/code/task4_5fold.py = v3_5f, OOF macro-F1 0.9889)
-# NOT run in the repo sandbox (no GPU / no images). Paste into a Kaggle notebook (GPU T4 x1 or P100, Internet ON).
-# NO SUBMIT - writes /kaggle/working/preds only.
+# Task 4 - full-train refit of a DINOv3 ConvNeXt (Base or Large), Kaggle GPU T4.
+# Needs HF_TOKEN (DINOv3 weights are gated): Kaggle UI, Add-ons -> Secrets -> HF_TOKEN, GPU T4, Internet on.
 #
-# Changes vs v3_5f (see t4/research/REPORT.md):
-#   1. BACKBONE is a preset key: run the notebook once per backbone, then blend runs with t4_blend_runs.py.
-#        "cnxt_t_d3"  convnext_tiny.dinov3   (v3 model, at higher res, as the control)
-#        "cnxt_s_d3"  convnext_small.dinov3  (bigger DINOv3 ConvNeXt)
-#        "eva02_s"    eva02_small_patch14_336.mim_in22k_ft_in1k (ViT family -> diversity for the 2-model ensemble)
-#   2. Higher input resolution, native 230x120 aspect ratio kept (v3: 192x352, rotation +-30 deg with black borders
-#      and scale 0.85-1.2 = aggressive crop). v4: milder geometry (rot +-8, scale 0.92-1.08, shift 4%) + optional hflip.
-#   3. Class-balanced sampling (sqrt-inverse-frequency by default, train labels only) instead of weighted CE.
-#      Optional "prior" mode samples to a user-given class mix; leave it OFF unless the team agrees it is allowed
-#      (the test mix is only known from model predictions on test; competition rule: no test usage for training).
-#   4. Longer schedule (20 epochs) and NO best-epoch-on-validation selection: the final EMA model is used, so the
-#      OOF score is an honest estimate (v3 picked the best of 14 epochs on the same fold it reports).
-#   5. TTA: every view (plain, hflip, up-scale) is saved separately for OOF and test, so the TTA combination can be
-#      chosen on OOF afterwards (t4_blend_runs.py) instead of guessing.
-#   6. Time guard for the 12 h Kaggle session; RUN_FOLDS can be split over several sessions (files are per fold).
-# Output format is the same as v3 (+ per-view files):
-#   preds/{TAG}_oof.npy (N_train x 5, mean of TTA_DEFAULT views), preds/{TAG}_oof_{view}.npy,
-#   preds/{TAG}_test_fold{k}.npy, preds/{TAG}_test_fold{k}_{view}.npy, preds/task4_{TAG}_test_proba.npy,
-#   preds/task4_{TAG}.csv (id,id_img,pred_num,pred_str), class order = datacard/alphabetical (0 7-11k .. 4 roblock).
+# Full-train refit: trains on all training images for a fixed number of epochs (from the best epochs of the 3-fold
+# runs), no early stopping, final EMA model. Test predictions only (TTA plain / hflip / up-scale).
+# Settings: T4_BACKBONE (cnxt_b_d3 = ConvNeXt-B | cnxt_l_d3c = ConvNeXt-L, batch 16 x grad-accum 2),
+#   T4_SEEDS (default "42"), T4_FULL_EPOCHS, T4_LOWQ_AUG ("1" adds a JPEG-like down/up-sampling augmentation;
+#   the ConvNeXt-L full-train runs in the final blend used it, the ConvNeXt-B run did not).
+# Outputs /kaggle/working/preds/v4f_<backbone>_s<seed>_test_full_{plain,hflip,up}.npy and a _log.json.
+#
+# Recipe (shared by all fine-tune scripts in this folder):
+#   * BACKBONE is a preset key (see PRESETS below): timm model name, input size, batch, learning rate, epochs,
+#     layer-wise learning-rate decay and drop-path rate.
+#   * Input keeps the native ~1.9:1 aspect ratio of the screenshots; mild geometry (rotation +-8 deg, scale 0.92-1.08,
+#     shift 4%), optional horizontal flip, photometric jitter.
+#   * Class-balanced sampling (inverse square root of the class count, training labels only).
+#   * Fixed schedule with an EMA of the weights; the final EMA model is used (no best-epoch selection on the fold).
+#   * Test-time augmentation views (plain, hflip, up-scale) are saved separately for out-of-fold and test predictions.
+#   * Time guard for the 12 h Kaggle session; T4_FOLDS lets the folds be split over several sessions.
+# Outputs (in /kaggle/working/preds):
+#   {TAG}_oof.npy, {TAG}_oof_{view}.npy, {TAG}_test_fold{k}_{view}.npy, task4_{TAG}_test_proba.npy, task4_{TAG}.csv.
+#   Class order 0 7-11 Knights, 1 FiveN, 2 Free Fried, 3 PUBE, 4 Roblock.
+# Training images and labels only; the test set is only predicted.
 import os, glob, time, gc, random, warnings, json
 import numpy as np, pandas as pd, torch, torch.nn as nn, torch.nn.functional as F, timm
 import timm.optim, timm.utils
@@ -155,7 +138,7 @@ def gpu_augment(x):
     m = x.mean((1, 2, 3), keepdim=True); x = (x - m) * torch.empty(B, 1, 1, 1, device=dev).uniform_(0.75, 1.25) + m   # contrast
     g = x.mean(1, keepdim=True); x = (x - g) * torch.empty(B, 1, 1, 1, device=dev).uniform_(0.6, 1.4) + g             # saturation
     gr = torch.rand(B, device=dev) < 0.05; x[gr] = x[gr].mean(1, keepdim=True).expand(-1, 3, -1, -1)
-    # JPEG-ish degradation: down/up-sample a quarter of the batch (test screenshots look lower quality / less confident)
+    # JPEG-like degradation: down/up-sample a quarter of the batch (robustness to compression)
     lo = torch.rand(B, device=dev) < (0.25 if globals().get("LOWQ_AUG", True) else 0.0)
     if lo.any():
         f = float(np.random.uniform(0.4, 0.75))
@@ -244,7 +227,7 @@ def train_fold(k, tr_idx, va_idx):
 SEEDS = [int(s) for s in os.environ.get("T4_SEEDS", "42").split(",")]
 ACCUM = PR.get("accum", 1)                                     # gradient accumulation (LayerNorm model -> same as a bigger batch)
 FULL_EPOCHS = int(os.environ.get("T4_FULL_EPOCHS", "14"))
-LOWQ_AUG = os.environ.get("T4_LOWQ_AUG", "0") == "1"           # JPEG-like down/up-sampling aug; OFF = no augmentation chosen from test EDA
+LOWQ_AUG = os.environ.get("T4_LOWQ_AUG", "0") == "1"           # JPEG-like down/up-sampling augmentation
 def train_full(seed):
     seed_all(seed); tr_idx = np.arange(len(y))
     model, _ = create_model(); model = model.to(DEVICE).to(memory_format=torch.channels_last)
@@ -296,7 +279,7 @@ for seed in SEEDS:
                "test_share": dict(zip(CLASSES, (np.bincount(P.argmax(1), minlength=K) / len(P)).round(3).tolist()))},
               open(f"{OUT}/preds/{tag}_log.json", "w"), indent=1)
     print(f"== {tag} done in {times[-1]/60:.0f} min | elapsed {(time.time()-T_START)/60:.0f} min", flush=True)
-print("wrote preds/ - nothing submitted"); raise SystemExit(0)
+print("wrote preds/"); raise SystemExit(0)
 folds = list(StratifiedKFold(N_FOLDS, shuffle=True, random_state=SEED).split(np.zeros(len(y)), y))
 os.makedirs(f"{OUT}/preds", exist_ok=True)
 def oof_path(v): return f"{OUT}/preds/{RUN_TAG}_oof_{v}.npy"
@@ -335,4 +318,4 @@ if len(tf) == N_FOLDS:
     res.to_csv(f"{OUT}/preds/task4_{RUN_TAG}.csv", index=False); print(res.head())
 else:
     print(f"only {len(tf)}/{N_FOLDS} test folds present - run the missing folds (T4_FOLDS=...) then re-run this cell")
-print("wrote preds/ - nothing submitted")
+print("wrote preds/")

@@ -1,4 +1,4 @@
-# Task 4 - Kernel E: frozen features, third batch (no fine-tuning). NO SUBMIT: writes /kaggle/working/feats.
+# Task 4 - frozen features, third batch (no fine-tuning). Writes /kaggle/working/feats.
 # Why: scene-group CV (work/t4_groupcv.py) shows frozen heads from different SSL/distilled backbones make different errors on
 # unseen scenes and add up (ViT-H+ + RADIOv3 + DINOv2-g 0.906 vs best single 0.893). This batch adds three more, none gated
 # (no HF_TOKEN -> any account: GPU T4 + Internet on, Save & Run All):
@@ -123,4 +123,4 @@ for tag in ONLY:
             print(tag, split, v, f.shape, f"{time.time()-t0:.0f}s", flush=True)
             json.dump(log, open(f"{OUT}/log.json", "w"), indent=1)
     del m, fn; torch.cuda.empty_cache()
-print("done - nothing submitted", log)
+print("done", log)

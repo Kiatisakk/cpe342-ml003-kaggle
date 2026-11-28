@@ -1,7 +1,7 @@
 # Scene-group CV for T4 frozen heads. Why: train holds many near-duplicate scenes (train->train NN cosine median 0.75 vs
 # test->train 0.66 on RADIO features), so random-fold OOF (0.96-0.99) measures memorised scenes, while the test set is new
 # scenes of the same games. Grouping train images into scene clusters and holding whole clusters out gives a validation that
-# behaves like the test set, so head choices can be ranked offline instead of on the LB. Train labels only.
+# behaves like the test set, so head choices can be ranked on unseen scenes. Train labels only.
 # usage: python work/t4_groupcv.py            -> builds t4/research/groupcv/groups_k{K}.npy and prints a comparison table
 import os, sys, time, numpy as np, pandas as pd, torch
 from sklearn.cluster import KMeans

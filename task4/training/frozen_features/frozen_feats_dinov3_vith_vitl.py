@@ -1,4 +1,4 @@
-# Task 4 — frozen DINOv3 large-backbone features (no fine-tuning). NO SUBMIT: writes /kaggle/working/feats only.
+# Task 4 - frozen DINOv3 large-backbone features (no fine-tuning). Writes /kaggle/working/feats.
 # Why: the fine-tuned models score OOF 0.99 but about 0.88 on test (test images darker / more saturated). Frozen features of a
 # large self-supervised backbone keep the pretrained invariances, so a linear head on them should degrade less under that shift,
 # and they add diversity to the v3 ConvNeXt-T + EVA02-S blend. The head is trained locally on CPU with CV on TRAIN labels only.
@@ -83,4 +83,4 @@ for name in BACKBONES:
             print(tag, split, v, f.shape, f"{time.time()-t0:.0f}s", flush=True)
             json.dump(log, open(f"{OUT}/log.json", "w"), indent=1)
     del model; torch.cuda.empty_cache()
-print("done - nothing submitted")
+print("done")

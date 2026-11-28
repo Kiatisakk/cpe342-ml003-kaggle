@@ -18,7 +18,7 @@ All scripts train on **training images and labels only**. The test set is only p
 | `colab/vit_l_dinov3_fulltrain.ipynb` | DINOv3 ViT-L/16, full-train refit | Colab A100 | companion |
 | `colab/frozen_vit7b_features.ipynb` | Frozen DINOv3 ViT-7B `[CLS, mean patch]` features (plain + hflip) | Colab A100 | frozen head, joint linear probe |
 | `colab/frozen_vit7b_multiscale_layers.ipynb` | Frozen ViT-7B features at other scales and depths (block 30 = 75%, block 20 = 50%, scale 1.5×) | Colab A100 | frozen heads, joint linear probe |
-| `finetune_kaggle/convnext_s_dinov3_3fold.py` | Shared 3-fold fine-tune script (`T4_BACKBONE` preset); the ConvNeXt-B 3-fold run used this script with a `cnxt_b_d3` preset | Kaggle T4 | companion |
+| `finetune_kaggle/convnext_s_dinov3_3fold.py` | DINOv3 ConvNeXt, 3 folds: `T4_BACKBONE=cnxt_b_d3` gives the ConvNeXt-B model of the final blend (`cnxt_s_d3` = ConvNeXt-S, default) | Kaggle T4 | companion |
 | `finetune_kaggle/convnext_l_dinov3_3fold.py` | ConvNeXt-L DINOv3, 3 folds | Kaggle T4 | companion |
 | `finetune_kaggle/eva02_b_3fold.py` | EVA02-B, 3 folds | Kaggle T4 | companion |
 | `finetune_kaggle/dinov2_l_3fold.py` | DINOv2-L, 3 folds | Kaggle T4 | companion |
@@ -31,7 +31,8 @@ All scripts train on **training images and labels only**. The test set is only p
 | `frozen_features/train_linear_heads.py` | Linear heads on the frozen features (5 folds, train labels only, CPU) | local CPU | frozen-head probabilities |
 | `scene_cv/scene_group_cv.py` | Scene clusters (k-means per class on frozen embeddings) and scene-grouped CV of the heads | local CPU | scene folds |
 | `scene_cv/scene_group_folds_sgkf.py` | Class-balanced scene-grouped folds (`StratifiedGroupKFold`) and head OOF on them | local CPU | fold 0 for calibration |
-| `blend/build_final_blend_v90.py` | Joint 10-backbone linear probe, temperature calibration on scene fold 0, entropy-weighted pooling, train-prior adjustment | local CPU | `sub_v90f_entropy_dualhead_md.csv` (Task 4 column) |
+| `blend/train_joint_linear_probe.py` | Joint 10-backbone linear probe on the concatenated frozen features (scene fold 0 and full train) | local CPU, ~16 GB RAM | joint linear probe |
+| `blend/build_final_blend.py` | Temperature calibration on scene fold 0, entropy-weighted pooling of all components, train-prior adjustment; writes `task4_predictions.csv` | local CPU | the final Task 4 predictions |
 
 ## How to run
 
@@ -44,5 +45,11 @@ All scripts train on **training images and labels only**. The test set is only p
 3. **Settings.** The Kaggle scripts are configured by environment variables at the top of each file (`T4_BACKBONE`, `T4_FOLDS`, `T4_SEEDS`, `T4_FULL_EPOCHS`, `T4_RECIPE`).
    A 3-fold run of a large backbone takes about two folds per 12-hour Kaggle session; set `T4_FOLDS` to the remaining fold for the next session.
 4. **Outputs.** Each run writes test (and, for fold runs, out-of-fold) probability files `*_test_*_{plain,hflip,up}.npy` in the original `test.csv` row order.
-5. **Blend.** `blend/build_final_blend_v90.py` reads these files from the research folder layout (`t4/preds/<run>/...`) that we used during the competition; adjust the paths at the top of the script to where you saved the outputs.
-   `task4/task4.ipynb` can also load pre-computed companion probabilities from its `task4_artifacts/` folder (`multi_arch_base_*`, `joint_10mb_lin_*`) and fuses them with the LoRA models.
+5. **Blend.** Put every run's output folder under one root, using the folder names listed in `blend/build_final_blend.py` (for example `t4/preds/v4f_eva02_l/...`, `t4/preds/dinov3_head/<head>/...`), then run:
+   ```bash
+   T4_PRED_ROOT=/path/to/outputs T4_DATA_DIR=/path/to/04_image_classification python blend/train_joint_linear_probe.py
+   T4_PRED_ROOT=/path/to/outputs T4_DATA_DIR=/path/to/04_image_classification python blend/build_final_blend.py
+   ```
+   Other settings (all optional, environment variables at the top of each script): `T4_TEST_ORDER` (image names in the order the test probability files were written), `T4_VAL0_IDX` (scene fold 0 indices), `T4_SCENE_FOLDS`, `T4_OUT`.
+   With our saved outputs, `build_final_blend.py` reproduces the Task 4 column of `sub_v90f_entropy_dualhead_md.csv` exactly (0 rows differ; scene fold 0 macro F1 0.99482, 21 errors in 5,113 images).
+   `task4/task4.ipynb` can also load pre-computed companion probabilities from its `task4_artifacts/` folder (`multi_arch_base_*`, `joint_10mb_lin_*`) and fuse them with the LoRA models.
