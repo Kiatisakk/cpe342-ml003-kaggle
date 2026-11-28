@@ -1,23 +1,22 @@
 \section{Team Collaboration}
 \label{sec:collaboration}
 
-\paragraph{Roles.} Table~\ref{tab:collab-roles} is to be completed by the team; the text below it uses only facts recorded in the project logs.
+\paragraph{Roles.} Table~\ref{tab:collab-roles} lists each member's contributions.
 
 \begin{table}[H]\centering\small
 \captionsetup{justification=raggedright,singlelinecheck=false}
-\caption{Team roles.}
-\label{tab:collab-roles}
-\begin{tabular}{@{}L{.22\linewidth}L{.14\linewidth}L{.22\linewidth}L{.34\linewidth}@{}}
+
+\begin{tabular}{@{}L{.20\linewidth}L{.14\linewidth}L{.60\linewidth}@{}}
 \toprule
-\textbf{Name} & \textbf{Student ID} & \textbf{Main tasks} & \textbf{Contributions} \\
+\textbf{Name} & \textbf{Student ID} & \textbf{Contributions} \\
 \midrule
-\todo{name} & \todo{ID} & \todo{tasks} & \todo{contribution} \\
-\todo{name} & \todo{ID} & \todo{tasks} & \todo{contribution} \\
-\todo{name} & \todo{ID} & \todo{tasks} & \todo{contribution} \\
-\todo{name} & \todo{ID} & \todo{tasks} & \todo{contribution} \\
-\todo{name} & \todo{ID} & \todo{tasks} & \todo{contribution} \\
+Kiatisak Markmeeshap & 67070501005 & Tasks 1 to 5: designed the overall approach and the model pipelines, researched techniques and planned the experiments that the team ran, did the EDA, set up the first version of the report, and assembled the final submission file. \\
+Thanaboon Tikaew & 67070501021 & Task 4 and its EDA: looked for structure in the screenshots and found the near-duplicate scenes inside the training set that make random folds over-optimistic, along with the 4:1 class imbalance and the overlap of brightness and saturation between titles; trained and tested a DINOv2-L fine-tune as an extra ensemble member; wrote the Task 4 pipeline-progression and evaluation sections. \\
+Chanon Lhumsa-ard & 67070501059 & Tasks 3 and 5 and their EDA: in Task 3, showed that historical spending supplies the offset for 3,112 of the 3,125 payers without a previous-month value and documented the preprocessing; in Task 5, explained the per-period check of the 3-metric box, traced the low-stability recovery from 1,257 accounts to 53 flags, and re-checked the detector against the final 2,104-account file. Also ran Task 4 GPU jobs (ConvNeXt-B and ConvNeXt-L DINOv3, WiSE-FT, frozen-feature kernels) and wrote the first Task 1 report, which set the structure of every chapter. \\
+Siriwan Yindeephot & 67070501075 & Tasks 1 and 2 and their EDA: in Task 1, linked the missing-feature analysis (OOF AUC 0.922 with all key features, 0.831 with two or more missing) to how the model should be monitored and deployed, and wrote the business-impact section; in Task 2, clarified how discrete features enter the Naive Bayes and the discriminative models and compared the tree baseline with Naive Bayes. Also trained the EVA02-S and EVA02-B models for the Task 4 ensemble. \\
 \bottomrule
 \end{tabular}
+\caption{Team roles.}\label{tab:collab-roles}
 \end{table}
 
 \paragraph{What the logs show.} Several teammates ran long GPU jobs on their own Kaggle and Colab accounts so that we could use more than one account's quota: for example the EVA02-B fine-tune, the third fold of the ConvNeXt-B run, a DINOv2-L fold, frozen-feature extraction kernels, and a WiSE-FT experiment. A teammate wrote the first draft of the Task 1 report (pull request \#1 of the submission repository), which set the structure that this report follows for all five tasks. Questions about the rules were routed to the TA through one teammate, and the answers (15 and 16 November) shaped the final submission.

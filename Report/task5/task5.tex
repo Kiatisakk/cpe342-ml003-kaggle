@@ -138,8 +138,7 @@ Figure~\ref{fig:t5-gaps} shows that in each feature no account lies inside the g
 \textbf{What we saw (hidden members).} Table~\ref{tab:t5-recovery-funnel} shows how the companion box narrows the pool before posterior scoring. Figure~\ref{fig:t5-lsnan}(a) shows the posterior distribution and the 0.10 threshold. Panel (b) plots the mean of \feat{login_count} against the standard deviation of \feat{purchase_frequency}. Visible \feat{lowstab} accounts (pink) have a lower mean \feat{login_count} than the comparison accounts in the same box. Candidates (rings) spread between the two groups, and diamonds mark those that pass the posterior threshold. Panel (c) tests how the assumed number of hidden members changes the result. At a threshold of 0.10, assuming 10, 13, 14, 17 or 20 hidden members flags 36, 47, 53, 61 or 66 accounts, respectively. At a threshold of 0.05, the number stays between 69 and 70 for every tested prior of 13 or more.
 
 \begin{table}[H]\centering\small
-\caption{Low-stability recovery counts.}
-\label{tab:t5-recovery-funnel}
+
 \begin{tabular}{@{}L{.22\linewidth}L{.60\linewidth}r@{}}
 \toprule
 \textbf{Step} & \textbf{Condition} & \textbf{Accounts} \\
@@ -150,6 +149,7 @@ Posterior threshold & Low-stability posterior $p>0.10$. & 53 \\
 New final flags & Count the account also found by \feat{acckda} once in the final union. & 52 \\
 \bottomrule
 \end{tabular}
+\caption{Low-stability recovery counts.}\label{tab:t5-recovery-funnel}
 \end{table}
 
 \textbf{What we decided (hidden members).} We use 14 as the assumed number of hidden members, informed by the missing-rate estimate and the sensitivity check. We flag candidates whose posterior exceeds 0.10, the approximate $F_3$ break-even. See Section~\ref{sec:t5-failed} for the leaderboard checks.
@@ -171,8 +171,7 @@ New final flags & Count the account also found by \feat{acckda} once in the fina
 \textbf{What we decided.} Use the four-period means to visualise the group, and apply the joint per-period rule to flag accounts. Table~\ref{tab:t5-period-check} explains the two checks. An average can sit inside an interval when a high value in one period is offset by a lower value in another. Checking each observed value prevents that cancellation from qualifying the account.
 
 \begin{table}[H]\centering\small
-\caption{Four-period means and box checks.}
-\label{tab:t5-period-check}
+
 \begin{tabular}{@{}L{.24\linewidth}L{.35\linewidth}L{.35\linewidth}@{}}
 \toprule
 \textbf{View or check} & \textbf{What it uses} & \textbf{Role} \\
@@ -181,6 +180,7 @@ Four-period mean & One average per metric over the observed periods. & Shows whe
 Joint per-period check & Every observed value of all three metrics must fit its interval. & Defines the detector and adds 244 accounts outside Stage 1. \\
 \bottomrule
 \end{tabular}
+\caption{Four-period means and box checks.}\label{tab:t5-period-check}
 \end{table}
 
 \begin{figure}[H]
@@ -219,7 +219,6 @@ The left panel of Figure~\ref{fig:t5-box} projects the 3-metric box onto the mea
 First, we estimate how many accounts would enter the box by chance. For each metric, we count out-of-box period values among the comparison accounts (0 to 4, preserving the dependence across periods within that metric). We combine the three distributions under the assumption that the metrics are independent. Table~\ref{tab:t5-boxnull} groups the 24,081 accounts outside Stage 1 in the 12 November release by the total number of observed out-of-box values across the three metrics. It shows 244 box matches compared with 0.95 matches expected by chance. Under that model, the expected chance matches are about 0.4\% of the observed count, corresponding to an estimated precision of 99.6\% (99.7\% on the first release, where the expectation was 0.85). The counts for one, two and three out-of-box values are close to the corresponding expectations (6 against 7.8, 32 against 32.1, and 90 against 96.0).
 
 \begin{table}[H]\centering\small
-\caption{Observed and expected account counts.}\label{tab:t5-boxnull}
 \begin{tabular}{@{}rrr@{}}
 \toprule
 \textbf{Out-of-box values} & \textbf{Observed rows} & \textbf{Expected by chance} \\
@@ -230,6 +229,7 @@ First, we estimate how many accounts would enter the box by chance. For each met
 3 & 90 & 96.0 \\
 \bottomrule
 \end{tabular}
+\caption{Observed and expected account counts.}\label{tab:t5-boxnull}
 \end{table}
 
 Second, we use a sensitivity check (Figure~\ref{fig:t5-boxsens}). We shrink or widen the intervals around their centres and count the accounts inside. Narrowing one interval by 10\% removes 81 to 87 accounts (157 to 163 remain, compared with 152 to 171 on the first release). Narrowing all three by 10\% removes 174 (70 remain). Widening any interval by 10\% keeps the count at 244, and widening all three by 30\% adds only 5 accounts. The sharp drop when narrowing and the small change when widening support the selected bounds.
@@ -277,7 +277,6 @@ Figure~\ref{fig:t5-gapscan} shows the 24 widest gaps. A filled dot indicates tha
 The box-pair scan uses a 13-point interval grid per metric and pairs indicators from different metrics across all four periods. The four-feature scan tests all 14,950 combinations of 26 features using $5^4$ rank cells. The pairwise rank-grid scan uses $20\times20$ grids for 22,789 cross-metric pairs of 263 derived features. The geographic scan counts accounts in the densest $0.5^\circ$ home-position cell. The Gaussian mixture uses 28 dimensions and is assessed by BIC~\citep{gmm_bic}. HDBSCAN~\citep{hdbscan} uses the feature means, and t-SNE~\citep{tsne} takes 56 features as input.
 
 \begin{table}[H]\centering\small
-\caption{Anomaly scans by data release.}\label{tab:t5-negscans}
 \begin{tabular}{@{}L{.27\linewidth}L{.31\linewidth}L{.34\linewidth}@{}}
 \toprule
 \textbf{Scan} & \textbf{New (12 Nov file)} & \textbf{First release} \\
@@ -291,6 +290,7 @@ HDBSCAN & no cluster on 6,000 normal accounts, nor on the column-shuffled copy &
 t-SNE & not recomputed & bot, takeover, selling and VPN are separate islands; the box is a dense patch at the edge; low activity, low communication and low stability dissolve in the bulk \\
 \bottomrule
 \end{tabular}
+\caption{Anomaly scans by data release.}\label{tab:t5-negscans}
 \end{table}
 
 The box-pair scan recovered a bot-type pair on the full file ($z=64.5$). The four-feature scan detected the known 244-account box when we put it back ($z=11.7$). These checks show sensitivity to the patterns tested. On the accounts left unflagged, the maximum four-feature score of 5.9 was close to the two column-shuffled values of 5.7 and 5.8, so we kept the existing detectors. On the first release, HDBSCAN and the Gaussian mixture yielded groups that did not isolate the 244-account box. The joint scans show why searching smaller sets of features can help when a cluster is defined by three of the 28 dimensions.
@@ -359,7 +359,6 @@ The final detector is a union of four unsupervised components. Figure~\ref{fig:t
 \end{figure}
 
 \begin{table}[H]\centering\small
-\caption{Detector rules and account counts.}\label{tab:t5-detectors}
 \begin{tabular}{@{}L{.20\linewidth}L{.58\linewidth}r@{}}
 \toprule
 \textbf{Detector} & \textbf{Rule} & \textbf{Accounts} \\
@@ -376,6 +375,7 @@ Posterior recovery & \feat{behavior_stability} missing, outside Stage 1, inside 
 \textbf{Final} & & \textbf{2,104} \\
 \bottomrule
 \end{tabular}
+\caption{Detector rules and account counts.}\label{tab:t5-detectors}
 \end{table}
 
 \paragraph{Rule detector.} The median and MAD are less sensitive to extreme changes, and the $z$-score uses them to summarise the typical change and its spread. Requiring two metrics reduces flags due to one extreme column. The geographic rule also covers large login jumps and invalid latitudes. Widening the geographic and behavioural cuts ($z\in[4,6]$, $2^\circ$ to $5^\circ$) added 356 accounts and lowered the public score by 0.0025 (Section~\ref{sec:t5-failed}).
@@ -399,7 +399,6 @@ Posterior recovery & \feat{behavior_stability} missing, outside Stage 1, inside 
 Figure~\ref{fig:t5-breakdown} and Table~\ref{tab:t5-results} summarise the final file. The leaderboard quantities come from isolated probes, and the reported $F_3$ is an estimate based on hidden-member accounting.
 
 \begin{table}[H]\centering\small
-\caption{Final detection results.}\label{tab:t5-results}
 \begin{tabular}{@{}L{.50\linewidth}L{.42\linewidth}@{}}
 \toprule
 \textbf{Quantity} & \textbf{Value} \\
@@ -411,6 +410,7 @@ Same estimate with the best-known extra hidden rows (2,115 flagged) & 0.99698 \\
 Leaderboard effect of the last tested changes & between $-0.00025$ and $+0.00002$ \\
 \bottomrule
 \end{tabular}
+\caption{Final detection results.}\label{tab:t5-results}
 \end{table}
 
 \paragraph{How close to complete the file is.} The research notes estimate $F_3$ at 0.9968 from the observed groups and the assumed number of members hidden by missing data. They estimate 18 hidden anomalies, including a candidate with missing \feat{activity_level} in all four periods and about 17 \feat{lowstab} candidates with missing \feat{behavior_stability}. Recovery targets the latter. An alternative file with 2,115 flagged accounts, including the low-activity candidate and recovery with a prior of 17, had an estimated $F_3$ of 0.99698. It scored 0.0001 lower on the public leaderboard, so we kept the 2,104-account file.
@@ -432,7 +432,7 @@ Leaderboard effect of the last tested changes & between $-0.00025$ and $+0.00002
 
 \paragraph{Where the detector is weakest.} Missing values can hide a group's defining signal. The research notes estimate about 17 hidden low-stability members. The recovery rule flags 53 of the 129 candidates at the approximate $F_3$ break-even threshold, which reflects the higher weight on missed anomalies.
 
-\paragraph{Robustness to data re-generation.} The pipeline was written on the first release and transferred to the second without changing any cut. Rules placed in empty gaps are stable under resampling; rules placed inside a dense distribution would not be.
+\paragraph{Robustness to the data re-release.} The pipeline was written on the first release and transferred to the second without changing any cut. Rules placed in empty gaps are stable under resampling; rules placed inside a dense distribution would not be.
 
 \subsubsection{Common Mistakes and Failed Experiments}
 \label{sec:t5-failed}
@@ -442,7 +442,6 @@ Leaderboard effect of the last tested changes & between $-0.00025$ and $+0.00002
 \paragraph{Black-box detectors do not fit this problem.} The course brief names Isolation Forest and autoencoders, so we tested them (Table~\ref{tab:t5-baselines}). These methods identify extreme tails, and choosing a cut-off requires additional evidence. The research notes measure agreement with the rule-based detector union. For the new release, agreement is the share of each group captured in the detector's top 2,104 accounts. For the first release, ROC-AUC uses the 1,811-row union as the reference.
 
 \begin{table}[H]\centering\small
-\caption{Comparison with baseline detectors.}\label{tab:t5-baselines}
 \begin{tabular}{@{}L{.27\linewidth}L{.12\linewidth}L{.55\linewidth}@{}}
 \toprule
 \textbf{Method} & \textbf{Data} & \textbf{Result} \\
@@ -452,6 +451,7 @@ Temporal masked autoencoder (3-layer Transformer, top 2,104) & new & takeover 55
 One-class SVM, Mahalanobis distance, PCA reconstruction, Gaussian mixture~\citep{gmm_bic}, LOF~\citep{lof} & first & AUC 0.86, 0.87, 0.80, 0.80 and 0.52 \\
 \bottomrule
 \end{tabular}
+\caption{Comparison with baseline detectors.}\label{tab:t5-baselines}
 \end{table}
 
 \paragraph{The autoencoder.} The temporal masked autoencoder had an AUC of 0.83 against the rule set and 0.66 against the full union. The submission that broadened the rules and added top-ranked autoencoder accounts lowered the public score by 0.0124. We kept the rule-based detector.
@@ -464,7 +464,7 @@ The detector flags 8.13\% of accounts. For a security team that is drowning in a
 
 The competition metric favours catching anomalies over avoiding false alarms. The notebook uses the approximate 10\% break-even threshold for low-stability recovery. In production, the review team's capacity and the cost of missed cases and false alerts would guide threshold selection.
 
-\paragraph{Caveats for deployment.} The empty gaps in Figure~\ref{fig:t5-gaps} come from the synthetic generator. Real traffic has no clean gaps, and we could not measure the precision of a flag without labels. We would keep these detectors as a transparent baseline, add an isolation-forest or autoencoder model trained on real traffic and calibrated on analyst feedback, and use rolling windows so that a legitimate traveller or a rapidly improving player is not flagged indefinitely.
+\paragraph{Caveats for deployment.} The empty gaps in Figure~\ref{fig:t5-gaps} are clean in this dataset. Live traffic may not show such clean gaps, and we could not measure the precision of a flag without labels. We would keep these detectors as a transparent baseline, add an isolation-forest or autoencoder model trained on real traffic and calibrated on analyst feedback, and use rolling windows so that a legitimate traveller or a rapidly improving player is not flagged indefinitely.
 
 \endgroup
 \end{document}

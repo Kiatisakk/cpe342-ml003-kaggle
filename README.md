@@ -21,7 +21,8 @@ Each of the 5 tasks has its own folder containing a self-contained final model n
 │   └── task3_eda.ipynb      # Task 3: Detailed Visual EDA & Step-by-Step Insights
 ├── task4/
 │   ├── task4.ipynb          # Task 4: Final Model Pipeline (Game Title Classification — Macro F1)
-│   └── task4_eda.ipynb      # Task 4: Detailed Visual EDA & Step-by-Step Insights
+│   ├── task4_eda.ipynb      # Task 4: Detailed Visual EDA & Step-by-Step Insights
+│   └── training/            # Task 4: code for the companion backbones, frozen features and final blend (see its README)
 ├── task5/
 │   ├── task5.ipynb          # Task 5: Final Model Pipeline (Account Anomalies — Unsupervised F3)
 │   └── task5_eda.ipynb      # Task 5: Detailed Visual EDA & Step-by-Step Insights
@@ -59,7 +60,7 @@ Each of the 5 tasks has its own folder containing a self-contained final model n
    ```
    Open `task<N>/task<N>_eda.ipynb` for visual step-by-step EDA or `task<N>/task<N>.ipynb` and select **Run All** to run the final model pipeline and generate `task<N>/task<N>_predictions.csv`.
    - **Tasks 1, 2, 3, 5** run end-to-end on CPU.
-   - **Task 4**: `task4_eda.ipynb` and Stage 5 (calibration & entropy-weighted ensembling) run on CPU. Set `RUN_FULL_GPU_TRAINING = True` on an **A100 GPU (40–80 GB)** with `HF_TOKEN` configured (gated DINOv3 weights) to train the primary LoRA ViT-7B + Exact Weight-Space Model Soup + Dual-Head pipeline end-to-end from scratch.
+   - **Task 4**: `task4_eda.ipynb` and Stage 5 (calibration & entropy-weighted ensembling) run on CPU. Set `RUN_FULL_GPU_TRAINING = True` on an **A100 GPU (40–80 GB)** with `HF_TOKEN` configured (gated DINOv3 weights) to train the primary LoRA ViT-7B + Exact Weight-Space Model Soup + Dual-Head pipeline end-to-end from scratch. The companion backbones, frozen-feature heads and the final blend were trained in separate Kaggle/Colab sessions; their code is in `task4/training/` (see `task4/training/README.md`).
 
 4. **Assemble the final Kaggle submission**:
    ```bash

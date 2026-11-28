@@ -97,7 +97,6 @@ The total weight in an interval such as \texttt{110 <= account\_age\_days < 120}
 \paragraph{Additional features.} Models A and C use the transformations in Table~\ref{tab:t1-features}. Model A has 56 features after the posterior features are included.
 
 \begin{table}[H]\centering\small
-\caption{Engineered feature groups.}\label{tab:t1-features}
 \begin{tabular}{@{}L{.22\linewidth}L{.73\linewidth}@{}}
 \toprule
 \textbf{Transformation} & \textbf{Examples and Rationale} \\
@@ -108,6 +107,7 @@ Skill Summary & \feat{skill_z_sum} sums available skill values after scaling the
 Frequencies and Log Transform & \feat{freq_reports} and \feat{freq_friends} encode frequencies from the training data. Separate \texttt{log1p} features transform account age, friend count, progression speed, and report count. \\
 \bottomrule
 \end{tabular}
+\caption{Engineered feature groups.}\label{tab:t1-features}
 \end{table}
 
 \paragraph{Masking augmentation.} To expose Model A to incomplete records like those in Figure~\ref{fig:t1-missing}, each fold uses four copies of the fitting rows and randomly masks values at the per-feature missing rates measured in the labeled training set. The pipeline rebuilds the engineered features with \feat{build_features_full} and retains the original labels. Masking is limited to these copies so that early stopping, outer validation, and test prediction use the original observations.
@@ -154,7 +154,6 @@ The ensemble gives 70\% of the weight to the masked LightGBM and uses the other 
 \end{figure}
 
 \begin{table}[H]\centering\small
-\caption{Final ensemble components and weights.}\label{tab:t1-models}
 \begin{tabular}{@{}L{.15\linewidth}L{.11\linewidth}L{.67\linewidth}@{}}
 \toprule
 \textbf{Component} & \textbf{Weight} & \textbf{Training and Preprocessing} \\
@@ -164,6 +163,7 @@ Model B & 0.20 & Logistic regression stack over LightGBM, ExtraTrees, a PyTorch 
 Model C & 0.10 & Blend of tuned XGBoost, LightGBM, and CatBoost with categorical features. \\
 \bottomrule
 \end{tabular}
+\caption{Final ensemble components and weights.}\label{tab:t1-models}
 \end{table}
 
 \paragraph{Model A.} Stratified five-fold cross-validation uses seeds 42, 7, and 2024. Each fold is fitted three times at a learning rate of 0.02. Each fit reserves 10\% of its training portion for early stopping on ROC-AUC. The test scores average 45 fitted models.
@@ -184,7 +184,6 @@ We evaluated 251 candidate thresholds across quantiles 0.20--0.70 of the blended
 \paragraph{Results.} Table~\ref{tab:t1-results} lists the OOF results.
 
 \begin{table}[H]\centering\small
-\caption{Out-of-fold model results.}\label{tab:t1-results}
 \begin{tabular}{@{}L{.47\linewidth}L{.20\linewidth}L{.24\linewidth}@{}}
 \toprule
 \textbf{Model} & \textbf{OOF ROC-AUC} & \textbf{OOF Binary F2} \\
@@ -197,6 +196,7 @@ Model C: CatBoost base learner & 0.89116 & --- \\
 Final A/B/C Ensemble & \textbf{0.89501} & \textbf{0.83979} \\
 \bottomrule
 \end{tabular}
+\caption{Out-of-fold model results.}\label{tab:t1-results}
 \end{table}
 
 \textbf{Ranking.} Table~\ref{tab:t1-results} shows an OOF ROC-AUC gain of \textbf{0.00019} over Model A.
@@ -223,7 +223,6 @@ The curves come from a rerun of the same pipeline. The marker shows the submitte
 These research comparisons use three fold-split seeds or nested threshold evaluation, as applicable.
 
 \begin{table}[H]\centering\small
-\caption{Macro F2 of standalone models.}\label{tab:t1-compare}
 \begin{tabular}{@{}L{.50\linewidth}L{.16\linewidth}L{.24\linewidth}@{}}
 \toprule
 \textbf{Model} & \textbf{F2m} & \textbf{Other} \\
@@ -238,6 +237,7 @@ Mixture naive Bayes (EM, 1--12 components) & 0.743--0.763 & AUC 0.87 \\
 Blends LGB + XGB + Cat; LGB + MLP + NB & within noise & MLP weight 0.08, NB 0.00 \\
 \bottomrule
 \end{tabular}
+\caption{Macro F2 of standalone models.}\label{tab:t1-compare}
 \end{table}
 
 \paragraph{Decision log.} Figure~\ref{fig:t1-decision-log} shows each experiment's score change, with one panel per metric family. Green marks retained experiments, grey marks discarded experiments, and red hatching marks experiments excluded by the competition rules. The underlying rows are in \texttt{data/decision\_log\_t1.csv}.
@@ -277,7 +277,7 @@ The bars average three split seeds over 90,816 labeled rows. The dotted line mar
 
 \paragraph{How far can the score go?} Three measurements say that the data, not the model, limits the score (Figure~\ref{fig:t1-ceiling}). First, a learning curve of LightGBM on 10--100\% of each fold's training rows gains only 0.0015 macro F2 over the last 1.4-fold increase in data, and a power-law fit gives an asymptote of 0.7833 macro F2 and 0.8939 AUC for unlimited data. The research-phase final ensemble (0.7828 macro F2, 0.8948 AUC) already sits on that asymptote, so more data, capacity or tuning cannot reach 0.79. Second, the class-exclusive value ranges of Figure~\ref{fig:t1-ranges} cover 34.2\% of the labeled rows (31,055), and the model classifies every one of them correctly; forcing hard overrides there changed nothing. The other 59,761 rows form an overlap core with a cheater rate of 0.419, where the model reaches AUC 0.773. Reaching 0.79 macro F2 would need about 6\% fewer mis-ordered pairs inside that core (AUC 0.786). Third, a search for a second hidden identity predicted each of the 31 columns from the others and found only the known $\mathrm{lps}=\mathrm{level}\cdot r/\mathrm{age}$ relation (held-out $R^2$ 0.79 for age and 0.73 for \feat{level_progression_speed}); every other column has $R^2 \le 0.5$.
 
-A later analysis of the generator explains the shape of the core. The data look like uniform boxes per sub-population (for example legitimate new accounts with age 1--110 days, friends 0--49 and reports 10--29, against cheater accounts aged 15--180 or 200--1000 days) plus near-Gaussian skill features. Cheaters are slightly \emph{worse} than legitimate players on every skill feature (0.08--0.24 standard deviations), not better. Inside one overlap cell (6,006 complete rows) linear discriminant analysis, quadratic discriminant analysis and a quadratic logistic regression reach AUC 0.619, 0.606 and 0.615: the classes differ by a pure mean shift, with no covariance or mixture structure that a more flexible model could use. The gradient-boosted model reaches 0.699 in the same cell because the step-shaped distributions of reports and friends still carry information. Adding cross-fitted linear skill logits as features raised AUC by 0.0003 and changed F2 by $\pm 0.0001$, so the trees already use the linear part.
+A later analysis of the data explains the shape of the core. The data look like uniform boxes per sub-population (for example legitimate new accounts with age 1--110 days, friends 0--49 and reports 10--29, against cheater accounts aged 15--180 or 200--1000 days) plus near-Gaussian skill features. Cheaters are slightly \emph{worse} than legitimate players on every skill feature (0.08--0.24 standard deviations), not better. Inside one overlap cell (6,006 complete rows) linear discriminant analysis, quadratic discriminant analysis and a quadratic logistic regression reach AUC 0.619, 0.606 and 0.615: the classes differ by a pure mean shift, with no covariance or mixture structure that a more flexible model could use. The gradient-boosted model reaches 0.699 in the same cell because the step-shaped distributions of reports and friends still carry information. Adding cross-fitted linear skill logits as features raised AUC by 0.0003 and changed F2 by $\pm 0.0001$, so the trees already use the linear part.
 
 The points average three split seeds with a nested threshold for F2. The figure overlays the power-law fits.
 
@@ -301,7 +301,6 @@ The points average three split seeds with a nested threshold for F2. The figure 
 \paragraph{Research-phase experiments that failed.} Table~\ref{tab:t1-failed} lists the ideas tested during the research phase. All numbers are nested-threshold scores from three fold-split seeds unless noted, measured against the same LightGBM without the change; they are macro F2 (F2m) or binary F2 as labelled, not leaderboard scores.
 
 \begin{table}[H]\centering\small
-\caption{Research-phase experiment results.}\label{tab:t1-failed}
 \begin{tabular}{@{}L{.27\linewidth}L{.33\linewidth}L{.32\linewidth}@{}}
 \toprule
 \textbf{Idea} & \textbf{Result} & \textbf{Why it did not help} \\
@@ -315,6 +314,7 @@ Per-group thresholds or isotonic calibration & F2m 0.7817 / 0.7815 vs 0.7820 & M
 Masking at twice the observed missing rate & F2m 0.78115 vs 0.78144 & Over-masking is no better than the observed rate. \\
 \bottomrule
 \end{tabular}
+\caption{Research-phase experiment results.}\label{tab:t1-failed}
 \end{table}
 
 \paragraph{Limitations of the validation.} The reported binary F2 reflects threshold selection and evaluation on the same OOF scores. In addition, Model A's reference statistics and Model C's quantile bin edges were computed before the folds were split, while Model B trained its meta-model on a precomputed set of base OOF scores. A separate holdout would let us evaluate the selected threshold on rows that played no part in choosing it. Alternatively, preprocessing, stacking, and threshold selection could all be fitted within nested cross-validation.

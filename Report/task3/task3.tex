@@ -70,8 +70,7 @@ The training payer column includes only rows with $y>0$. The test column include
 
 \begin{table}[H]
 \centering\small
-\caption{Spending offset sources.}
-\label{tab:t3-offset-coverage}
+
 \begin{tabular}{@{}L{.43\linewidth}rrr@{}}
 \toprule
 \textbf{Offset source} & \textbf{Train payers} & \textbf{All train} & \textbf{All test} \\
@@ -83,6 +82,7 @@ Constant 6.5 & 13 & 27 & 4 \\
 Total & 53{,}951 & 104{,}000 & 25{,}889 \\
 \bottomrule
 \end{tabular}
+\caption{Spending offset sources.}\label{tab:t3-offset-coverage}
 \end{table}
 
 Historical spending supplies the offset for 3{,}112 of the 3{,}125 training payers with no previous-month value. The constant is needed only when both spending fields are missing after the fill.
@@ -157,7 +157,6 @@ What this picture decides: the model must deliver (i) a calibrated $p$ and (ii) 
 \end{figure}
 
 \begin{table}[H]\centering\small
-\caption{Final spending model components.}\label{tab:t3-models}
 \begin{tabular}{@{}L{.20\linewidth}L{.74\linewidth}@{}}
 \toprule
 \textbf{Component} & \textbf{Settings} \\
@@ -167,6 +166,7 @@ Stage 2, payer amount & CatBoost \texttt{MultiQuantile} on the payers of each fo
 Point prediction & $q=\mathrm{clip}\bigl(1-1/(2p),0.02,0.50\bigr)$, linear interpolation between neighbouring quantile levels, $\hat y=0$ where $p\le0.5$, clipped to $[0,300000]$. \\
 \bottomrule
 \end{tabular}
+\caption{Final spending model components.}\label{tab:t3-models}
 \end{table}
 
 \paragraph{Why these choices.} \emph{Depth 4.} The log-residual is a sum of a few multiplicative steps (premium, VIP tier, number of games, recency, month), which shallow symmetric trees represent well. Figure~\ref{fig:t3-sweep}a and the paragraph below give the sweep: CatBoost is flat from depth 3 to 6 and falls at depth 8, XGBoost \citep{xgboost} is lower at every depth, and LightGBM is lower again. \emph{Multi-quantile.} One model produces all 11 quantiles together with shared trees; the predicted quantiles are sorted afterwards to remove any crossing. \emph{Seeds.} The seed average costs compute only: ten seeds of each stage added 0.00006 over three of each.
@@ -191,7 +191,7 @@ Point prediction & $q=\mathrm{clip}\bigl(1-1/(2p),0.02,0.50\bigr)$, linear inter
 \]
 which is the loss of Wang et al.\ (2019)~\citep{ziln} for $K=1$. It fits this target for the two reasons of Section~\ref{sec:t3-eda}: 48\% of the rows are exact zeros, and the payer amount is a product of several factors, so $\log y$ is the natural scale. We ran it in two forms, both on the same exact fill, segment imputer and folds as the final model. In the \emph{gradient-boosting form} (notebooks \texttt{task3-hurdle-ziln}, versions 1 to 3, and \texttt{task3-hurdle-ziln-v4}) XGBoost fitted $p$ with a classifier, the mean $\mu(x)$ of $\log(1+y)$ for payers with a squared-error regressor, and the log-variance with a second regressor, with a log-normal as the payer law. In the \emph{neural form} (\texttt{task3-nn-ziln}) one network predicts $p$, the weights $\pi_k$, the means $\mu_k$ and the scales $\sigma_k$ jointly. It embeds each quantile-normalised numeric feature with periodic features, passes them through three residual blocks of width 512, and was trained with AdamW, one-cycle learning rate, at most 80 epochs and early stopping on 10\% of each fold, two seeds per fold. $K=1$ is plain ZILN and $K=3$ is a mixture of three log-normals.
 
-The point prediction is the hurdle median derived at the start of this section. Both forms return a full payer distribution, so we set $\hat y=0$ when $p\le\tfrac12$ and otherwise take its quantile at $q=1-1/(2p)$: for the single log-normal that is $\exp(\mu+\sigma\,\Phi^{-1}(q))-1$, for the mixture we invert the mixture cdf by bisection. Two numbers, a shift of $p$ and a multiplicative scale, were tuned on the out-of-fold predictions (for the $K=3$ network the shift is $+0.05$ and the scale $0.975$). The ZILN stack was then blended with the XGBoost multi-quantile models (Section~\ref{sec:t3-eval}). The ZILN branch was later replaced by direct quantile models, and the analysis of the data generator explains why a parametric shape for every player is a poor fit (Sections~\ref{sec:t3-eval} and~\ref{sec:t3-mistakes}). The ZILN runs used the first data release; Task~3 was not changed by the re-release of 12 November, so these scores are comparable with the final ones.
+The point prediction is the hurdle median derived at the start of this section. Both forms return a full payer distribution, so we set $\hat y=0$ when $p\le\tfrac12$ and otherwise take its quantile at $q=1-1/(2p)$: for the single log-normal that is $\exp(\mu+\sigma\,\Phi^{-1}(q))-1$, for the mixture we invert the mixture cdf by bisection. Two numbers, a shift of $p$ and a multiplicative scale, were tuned on the out-of-fold predictions (for the $K=3$ network the shift is $+0.05$ and the scale $0.975$). The ZILN stack was then blended with the XGBoost multi-quantile models (Section~\ref{sec:t3-eval}). The ZILN branch was later replaced by direct quantile models, and the analysis of the data explains why a parametric shape for every player is a poor fit (Sections~\ref{sec:t3-eval} and~\ref{sec:t3-mistakes}). The ZILN runs used the first data release; Task~3 was not changed by the re-release of 12 November, so these scores are comparable with the final ones.
 
 \subsubsection{Evaluation and Results}
 \label{sec:t3-eval}
@@ -201,7 +201,6 @@ Table~\ref{tab:t3-results} follows the out-of-fold score from the first hurdle m
 The earlier rows come from the local research pipeline, evaluated on the same five folds with seed 42 as the notebook result in the last row.
 
 \begin{table}[H]\centering\small
-\caption{Out-of-fold NMAE by milestone.}\label{tab:t3-results}
 \begin{tabular}{@{}L{.56\linewidth}L{.15\linewidth}L{.20\linewidth}@{}}
 \toprule
 \textbf{Model} & \textbf{OOF NMAE} & \textbf{Change vs row above} \\
@@ -215,6 +214,7 @@ CatBoost + LightGBM, $3\times3$ seeds & 0.79529 & +0.00024 \\
 \textbf{Final, $10\times10$ seeds (notebook)} & \textbf{0.79535} & +0.00006 \\
 \bottomrule
 \end{tabular}
+\caption{Out-of-fold NMAE by milestone.}\label{tab:t3-results}
 \end{table}
 
 \begin{figure}[H]
@@ -242,7 +242,6 @@ What we see: each ZILN stage gained from better inputs (exact fill, segment) and
 Medians are the only quantities fitted for the simple predictors in Table~\ref{tab:t3-baselines}.
 
 \begin{table}[H]\centering\small
-\caption{Spending baseline scores.}\label{tab:t3-baselines}
 \begin{tabular}{@{}L{.62\linewidth}L{.15\linewidth}@{}}
 \toprule
 \textbf{Predictor} & \textbf{NMAE} \\
@@ -254,6 +253,7 @@ Median spending of the player's segment & 0.6139 \\
 \textbf{Final model (OOF)} & \textbf{0.7954} \\
 \bottomrule
 \end{tabular}
+\caption{Spending baseline scores.}\label{tab:t3-baselines}
 \end{table}
 
 \paragraph{The decision rule matters.} Table~\ref{tab:t3-rule} replaces the rule on the saved out-of-fold probabilities and quantiles.
@@ -261,7 +261,6 @@ Median spending of the player's segment & 0.6139 \\
 All rule variants use the same out-of-fold probabilities and quantiles from the saved $10\times10$ ensemble.
 
 \begin{table}[H]\centering\small
-\caption{Alternative spending prediction rules.}\label{tab:t3-rule}
 \begin{tabular}{@{}L{.62\linewidth}L{.15\linewidth}L{.15\linewidth}@{}}
 \toprule
 \textbf{Rule} & \textbf{OOF NMAE} & \textbf{vs final} \\
@@ -275,6 +274,7 @@ Never predict zero, payer median & 0.78990 & $-0.00547$ \\
 $p\times$ payer median (expected-value style) & 0.78682 & $-0.00855$ \\
 \bottomrule
 \end{tabular}
+\caption{Alternative spending prediction rules.}\label{tab:t3-rule}
 \end{table}
 
 \paragraph{Post-hoc (shift, kappa) calibration.} A hurdle rule is only optimal if $p$ and the quantiles are calibrated, so the first thing we tried on top of every model was a two-parameter correction fitted on out-of-fold predictions: shift the probability, $p'=p+s$, and scale the predicted amount, $\hat y'=\kappa\hat y$. We repeated it in seven variants (global and per-segment shift and kappa, a shift of the quantile level instead of $p$, a scale per prediction decile, a scale per segment and prediction bin, and zeroing predictions below a cut-off $c$), each tuned on four folds and applied to the fifth. Figure~\ref{fig:t3-paired} (top panel) shows that all land within $\pm0.00001$ of the uncalibrated final model (0.79529, experiments R3-A to R3-G; paired standard deviation 0.00002--0.00005). The fitted parameters sit at the identity, about $(s,\kappa)=(0.02,1.00)$, the decile scales lie between 0.99 and 1.01, the cut-off picks $c=0$, and for the LightGBM hurdle each segment picks shift 0 and kappa 1 (E04). This is the numerical form of the reliability plot in Figure~\ref{fig:t3-qrule}b: the model is already calibrated, and the median rule leaves nothing for post-processing to correct. \emph{Decision.} No calibration step in the final model; this also removes a tuned parameter that would have needed nesting.
@@ -330,7 +330,6 @@ Whales hold 79.4\% of the absolute error when they are defined by the recorded s
 For each experiment, the OOF NMAE change is relative to the model to which the method was applied.
 
 \begin{table}[H]\centering\small
-\caption{Task 3 experiment results.}\label{tab:t3-failed}
 \begin{tabular}{@{}L{.38\linewidth}L{.16\linewidth}L{.38\linewidth}@{}}
 \toprule
 \textbf{Experiment} & \textbf{Change} & \textbf{Reading} \\
@@ -353,6 +352,7 @@ Post-hoc (shift, kappa) calibration, seven variants (R3) & $-0.00001$ to $+0.000
 $50/50$ robust blend with a second quantile model & 0 (public) & Public score identical to the single model. \\
 \bottomrule
 \end{tabular}
+\caption{Task 3 experiment results.}\label{tab:t3-failed}
 \end{table}
 
 \paragraph{Noise, outliers and ensemble selection.} Figure~\ref{fig:t3-paired} shows paired changes in out-of-fold NMAE for calibration, noise and outlier handling, and ensemble selection. The markers and bars show the mean and standard deviation across the five folds. The calibration and ensemble runs use the final $3\times3$ model (0.79529) as their baseline, and the noise runs use a control with the same code (0.79512). All mean changes fall within the shaded $\pm0.0005$ band. Table~\ref{tab:t3-failed} also includes Optuna \citep{optuna} tuning of CatBoost.
@@ -384,7 +384,7 @@ Karena's finance team misses quarterly targets by 35--40\%, the 20-person VIP su
 
 \paragraph{Revenue forecasting.} The out-of-fold predictions add up to 100.2\% of the real total, so a portfolio total for a month is close even though each prediction is a median. A median forecast is not an unbiased forecast in general, so this agreement should not be relied on; a finance team should also keep the 11 quantiles, which describe the spread of the lower half, and calibrate the totals on the last closed quarter before using them in a budget.
 
-\paragraph{Limits.} The score of 0.795 is a floor set by the generator; on live data we would expect different noise. About a third of the error is unpredictable coin-flips on whether a player pays, so no individual prediction should be presented as a promise. The 266 whale spikes show that a few large, unforeseen purchases dominate any monthly total; finance should add a reserve for them instead of expecting a model to find them.
+\paragraph{Limits.} The score of 0.795 is a floor set by the noise in the data; on live data we would expect different noise. About a third of the error is unpredictable coin-flips on whether a player pays, so no individual prediction should be presented as a promise. The 266 whale spikes show that a few large, unforeseen purchases dominate any monthly total; finance should add a reserve for them instead of expecting a model to find them.
 
 \endgroup
 \end{document}

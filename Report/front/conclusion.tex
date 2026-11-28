@@ -3,7 +3,7 @@
 
 \paragraph{Lessons from model building and evaluation.}
 \begin{itemize}[leftmargin=*,itemsep=3pt]
-\item \textbf{Understand the generator before choosing a model.} Exact identities (Tasks 1 and 3), a latent two-by-two structure (Task 2), empty gaps (Task 5) and near-duplicate scenes (Task 4) gave more than model tuning. In several tasks the tuned models were at a ceiling set by the data's own noise.
+\item \textbf{Check the structure of the columns before choosing a model.} Exact identities (Tasks 1 and 3), a latent two-by-two structure (Task 2), empty gaps (Task 5) and near-duplicate scenes (Task 4) gave more than model tuning. In several tasks the tuned models were at a ceiling set by the data's own noise.
 \item \textbf{Optimise the decision rule of the metric, not the loss.} A threshold near 60\% flagged for binary F2 (a leaderboard probe gained $+0.0128$ over the macro-F2 cut), the conditional quantile $q=1-1/(2p)$ for NMAE, a fixed-point affine rule for macro F1, and a 10\% break-even for F3. Each is a few lines of code and worth more than another model in the blend.
 \item \textbf{Out-of-fold scores can mislead under distribution shift.} In Task 4 the random-fold score reached 0.99 while the public test was harder: random folds contain near-duplicate scenes, so they measure memorisation. Scene-grouped folds ranked models better, although even they did not predict every leaderboard result (kNN smoothing improved the grouped score and lost on the public test).
 \item \textbf{Isolate one change per probe.} Because the score averages five tasks, a change in one task is small and noisy. One-change probes, with the expected effect written down beforehand, separated real gains from luck, and showed that most late tuning (blend weights, seeds, thresholds) was below the leaderboard's resolution.
@@ -14,8 +14,7 @@
 
 \begin{table}[H]\centering\scriptsize
 \captionsetup{justification=raggedright,singlelinecheck=false}
-\caption{Business uses and risks by task.}
-\label{tab:concl-business}
+
 \begin{tabular}{@{}L{.12\linewidth}L{.40\linewidth}L{.40\linewidth}@{}}
 \toprule
 \textbf{Task} & \textbf{Decision it drives} & \textbf{Cost or risk to manage} \\
@@ -27,6 +26,7 @@ T4 game title & Route support tickets and verify campaign screenshots by title, 
 T5 account security & Triage security alerts by anomaly type (takeover, selling, bot, VPN abuse). & We flagged 2,104 of 25,889 accounts (8.1\%) with an estimated F3 of about 0.997, but with no labels this is only agreement with the structure of the data; real traffic needs analyst feedback. \\
 \bottomrule
 \end{tabular}
+\caption{Business uses and risks by task.}\label{tab:concl-business}
 \end{table}
 
 \paragraph{Feeding a player-lifetime-value system.} The five outputs fit together as inputs to one player-lifetime-value (LTV) model, which we did not build. T3 gives the expected monthly spend and its uncertainty, and is the base of the LTV. T2 supplies the segment, which sets the horizon and the retention action. T1 and T5 enter as risk: a flagged cheater or a likely hijacked account lowers expected future value and triggers review or protection, so the LTV is discounted by the probability of a ban or a takeover. T4 supplies which game the player engages with, which lets the platform route support and tailor offers by title. In such a system the models must be scored and monitored together, because the same player can appear in several of them, and a shift in one task (new content in T4, a new cheat method in T1) should raise a flag before it reaches the revenue number.

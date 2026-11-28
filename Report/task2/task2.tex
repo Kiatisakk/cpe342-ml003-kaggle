@@ -125,7 +125,6 @@ The final model is a three-part probabilistic blend followed by a decision rule 
 \end{figure}
 
 \begin{table}[H]\centering\small
-\caption{Final segmentation model components.}\label{tab:t2-models}
 \begin{tabular}{@{}L{.20\linewidth}L{.09\linewidth}L{.62\linewidth}@{}}
 \toprule
 \textbf{Component} & \textbf{Weight} & \textbf{Training and settings} \\
@@ -136,13 +135,14 @@ MLP & 0.05 & Two hidden layers (128, 64) with SiLU and dropout 0.2, AdamW, one-c
 Decision rule & --- & Affine score $a_kp_k+b_k$ per class; $(a_k,b_k)$ solved by 8 fixed-point iterations on the OOF probabilities. \\
 \bottomrule
 \end{tabular}
+\caption{Final segmentation model components.}\label{tab:t2-models}
 \end{table}
 
 \paragraph{EM histogram Naive Bayes.} The class posterior is $P(z\mid x)\propto \pi_z\prod_j p_j(x_j\mid z)$, taken over the observed features only. The one-dimensional densities are histograms, so the model assumes no parametric shape. Choosing the bin count and the smoothing by the log-loss of the one-feature posterior judges calibration directly, so the choice does not depend on bin width. Tuning the smoothing of every feature against the F1 of the classifier overfitted the folds, and we replaced that earlier approach (Section~\ref{sec:t2-mistakes}).
 
 To handle label noise, we assume that the observed label $\tilde y$ equals the latent segment with probability $1-\varepsilon$ and otherwise takes one of the other three at random. Fifteen EM steps alternate between computing each row's posterior over the latent class from its features, the prior and the noise model (E-step), and re-estimating the histograms from those soft assignments (M-step); the noise rate $\varepsilon$ is updated from the same posteriors. The fitted flip rate is stable across folds (0.0280--0.0288, and 0.0284 on the full new-release data). At prediction time the latent posterior is mapped through the noise matrix to a probability for the observed label.
 
-\emph{Estimated versus true flip rate.} Throughout this report 2.8\% is the rate that EM estimates from the labels and the features alone, and about 3\% is the true rate of the generator. The true rate was measured once, on the first release, where the leaked \feat{player_id} blocks gave the class of every row: 3.0\% of the training labels disagreed with their block, spread uniformly over the other three classes ($\chi^2$ $p$ between 0.44 and 0.84). The EM estimate on that release was 0.028 (E06 of our experiment log), so it falls 0.2 points short of the truth, which is plausible because EM can only recognise a flip when the features disagree with the label. A label-noise model matters for \emph{calibration}, not for the decision: Naive Bayes trained on the id-cleaned labels reaches 0.7560 against 0.7557 on seed 42, and the argmax decisions do not change, whereas the EM-NB lowers the log-loss from 0.6229 to 0.5993 with density selection held equal (first release). The EM step is therefore kept for its probabilities, which the blend and the affine rule consume, and it adds about $+0.0004$ of macro F1 on top.
+\emph{Estimated versus true flip rate.} Throughout this report 2.8\% is the rate that EM estimates from the labels and the features alone, and about 3\% is the measured rate. The rate was measured once, on the first release, where the leaked \feat{player_id} blocks gave the class of every row: 3.0\% of the training labels disagreed with their block, spread uniformly over the other three classes ($\chi^2$ $p$ between 0.44 and 0.84). The EM estimate on that release was 0.028 (E06 of our experiment log), so it falls 0.2 points short of the truth, which is plausible because EM can only recognise a flip when the features disagree with the label. A label-noise model matters for \emph{calibration}, not for the decision: Naive Bayes trained on the id-cleaned labels reaches 0.7560 against 0.7557 on seed 42, and the argmax decisions do not change, whereas the EM-NB lowers the log-loss from 0.6229 to 0.5993 with density selection held equal (first release). The EM step is therefore kept for its probabilities, which the blend and the affine rule consume, and it adds about $+0.0004$ of macro F1 on top.
 
 \paragraph{Spline LR and MLP.} The spline logistic regression uses a cubic spline basis \citep{splines} and is fitted with scikit-learn \citep{sklearn}; the MLP is trained in PyTorch \citep{pytorch}. These two models cost little and capture smooth structure that Naive Bayes ignores. Their weights (0.08 and 0.05) come from earlier nested blend work on the first data release; re-tuning them on the new data with nested cross-validation gave $+0.00006\pm0.00018$, so we kept the original weights.
 
@@ -156,7 +156,6 @@ To handle label noise, we assume that the observed label $\tilde y$ equals the l
 The score is $\text{macro F1}=\frac14\sum_{k=0}^{3}\frac{2\,\text{TP}_k}{2\,\text{TP}_k+\text{FP}_k+\text{FN}_k}$. Table~\ref{tab:t2-results} lists the out-of-fold macro F1 of each component and of the final prediction. The tuned LightGBM baseline (0.7524) was measured on the first data release, so it appears in Table~\ref{tab:t2-failed} instead and is not compared with these numbers.
 
 \begin{table}[H]\centering\small
-\caption{Out-of-fold macro F1.}\label{tab:t2-results}
 \begin{tabular}{@{}L{.50\linewidth}L{.17\linewidth}L{.22\linewidth}@{}}
 \toprule
 \textbf{Model (new data)} & \textbf{OOF macro F1} & \textbf{Difference to EM-NB alone} \\
@@ -168,6 +167,7 @@ Blend 0.87 / 0.08 / 0.05, \texttt{argmax} & 0.75798 & $+0.00032$ \\
 \textbf{Blend + affine rule (final)} & \textbf{0.75826} & $+0.00060$ \\
 \bottomrule
 \end{tabular}
+\caption{Out-of-fold macro F1.}\label{tab:t2-results}
 \end{table}
 
 The Naive Bayes model alone reaches 0.75766 (per fold 0.7548--0.7617; three seeds 0.7577--0.7582). The two discriminative models are individually worse by 0.003--0.005 but make different mistakes, so the 0.87/0.08/0.05 blend adds 0.00032 over Naive Bayes alone, and the affine rule, which changes 2{,}056 of the 104{,}000 OOF predictions (1.98\%), adds a further 0.00028. The final pipeline reaches an OOF macro F1 of 0.75826. All numbers in this table come from the re-released data; the experiments of the failed-experiments table and the decision log are labelled ``first release'' or ``new data'' row by row, and the two releases must not be compared absolutely, because the rows were regenerated. The public leaderboard agrees in direction. On the first data release, replacing the plain Naive Bayes in Task~2 by the blend and the rule raised the public score from 0.71965 to 0.71999 (\texttt{sub\_v16b} $\to$ \texttt{sub\_v18a}), a gain of 0.00034 on the whole submission, or about 0.0017 of Task~2 macro F1 at a task weight of 0.2. The submission that this report describes, with the same Task~2 model, scored 0.87351 on the public leaderboard.
@@ -198,7 +198,7 @@ Figure~\ref{fig:t2-errors} opens up the final OOF predictions.
 
 \paragraph{Confidence.} The Naive Bayes probabilities are well calibrated (OOF log-loss 0.5975 on the new data). The 31\% of players whose blended top probability is at least 0.9 are classified correctly 94.8\% of the time, against 77.1\% overall. This ordering is useful in practice: a campaign can restrict itself to confident predictions.
 
-\paragraph{Ceiling.} Tuning, richer models and extra components all landed within 0.001 of the Naive Bayes score. We read this as a data ceiling. The generator gives conditionally independent features and a flip rate of about 3\% (2.8\% as estimated by EM); even a perfect model of the latent class would mislabel that fraction of the rows, and the overlapping tails cost the rest. A learning curve supports the reading. Figure~\ref{fig:t2-lc} trains the histogram Naive Bayes on a growing share of each fold's training part (first-release data, three seeds). Macro F1 rises from 0.7460 at 8{,}320 rows to 0.7518 at 20{,}800, 0.7539 at 41{,}600, 0.7550 at 62{,}400 and 0.7557 at 83{,}200 rows, so each doubling of the data brings less (about $+0.0018$ for the last one), and the extrapolation to unlimited data leaves about 0.002 of headroom. The EM variant leads at small sizes (0.7472 against 0.7460 at 10\%) and the two merge at full size. Within the noise of one data set (about $\pm0.002$ for macro F1 on this many rows) we are therefore at the feature-only ceiling.
+\paragraph{Ceiling.} Tuning, richer models and extra components all landed within 0.001 of the Naive Bayes score. We read this as a data ceiling. The data have conditionally independent features and a flip rate of about 3\% (2.8\% as estimated by EM); even a perfect model of the latent class would mislabel that fraction of the rows, and the overlapping tails cost the rest. A learning curve supports the reading. Figure~\ref{fig:t2-lc} trains the histogram Naive Bayes on a growing share of each fold's training part (first-release data, three seeds). Macro F1 rises from 0.7460 at 8{,}320 rows to 0.7518 at 20{,}800, 0.7539 at 41{,}600, 0.7550 at 62{,}400 and 0.7557 at 83{,}200 rows, so each doubling of the data brings less (about $+0.0018$ for the last one), and the extrapolation to unlimited data leaves about 0.002 of headroom. The EM variant leads at small sizes (0.7472 against 0.7460 at 10\%) and the two merge at full size. Within the noise of one data set (about $\pm0.002$ for macro F1 on this many rows) we are therefore at the feature-only ceiling.
 
 The learning curves show the mean and standard deviation over the three seeds. The plotted values come from experiment E11 (\texttt{data/t2\_learning\_curve.csv}).
 
@@ -216,12 +216,11 @@ The learning curves show the mean and standard deviation over the three seeds. T
 
 \paragraph{Tuning F1 directly.} We first tuned 46 smoothing parameters with Optuna \citep{optuna} against the macro F1 of the classifier. The nested estimate (0.7544) was below the untuned uniform histogram (0.7548 on the same seed), a sign of overfitting to the five folds. Selecting the density by the inner log-loss replaced it and gave 0.7558, then 0.7562 with the EM step (first-release data).
 
-\paragraph{Models that lost to Naive Bayes.} Table~\ref{tab:t2-failed} lists the other experiments. Flexible discriminative models gained nothing from their capacity: LightGBM \citep{lightgbm} fit its training data to 0.7925 yet scored 0.7524 out of fold, and histogram gradient boosting and XGBoost \citep{xgboost} reached about 0.750 and 0.7498. Models that need more parameters than the generator provides (QDA) lost clearly. Specialist models, blends and extra tuning all tied with the final model within the noise bar of 0.001, so we kept the simplest member.
+\paragraph{Models that lost to Naive Bayes.} Table~\ref{tab:t2-failed} lists the other experiments. Flexible discriminative models gained nothing from their capacity: LightGBM \citep{lightgbm} fit its training data to 0.7925 yet scored 0.7524 out of fold, and histogram gradient boosting and XGBoost \citep{xgboost} reached about 0.750 and 0.7498. Models that need more parameters than the data support (QDA) lost clearly. Specialist models, blends and extra tuning all tied with the final model within the noise bar of 0.001, so we kept the simplest member.
 
 In the Data column, \emph{old} denotes the first release and \emph{new} the 12 November re-release. Codes E$n$ identify research experiments. Scores marked $^\dagger$ are from nested or multi-seed runs against the first-release final score of 0.7562.
 
 \begin{table}[H]\centering\small
-\caption{Task 2 experiment results.}\label{tab:t2-failed}
 \begin{tabular}{@{}L{.30\linewidth}L{.07\linewidth}L{.17\linewidth}L{.36\linewidth}@{}}
 \toprule
 \textbf{Experiment} & \textbf{Data} & \textbf{Macro F1} & \textbf{Why it was dropped} \\
@@ -245,16 +244,16 @@ Nelder--Mead class weights & old & $+0.00019$ vs \texttt{argmax} & 0.00043 below
 Class prior estimated from test predictions \citep{saerens} & old & no shift found & The estimated test prior equals the training prior; the TA ruling also bars this kind of step. \\
 \bottomrule
 \end{tabular}
+\caption{Task 2 experiment results.}\label{tab:t2-failed}
 \end{table}
 
-\paragraph{The segment of Task 3.} The same player ids occur in Task~3, which also has a \feat{segment} column. We checked whether it could serve as extra labels: it agrees with the Task~2 segment of the same player at chance level (28\%), because the two files are independent draws from the generator. We did not use it.
+\paragraph{The segment of Task 3.} The same player ids occur in Task~3, which also has a \feat{segment} column. We checked whether it could serve as extra labels: it agrees with the Task~2 segment of the same player at chance level (28\%), because the two files were sampled independently. We did not use it.
 
 \subsubsection{Domain Interpretation and Business Impact}
 
 The situation in the brief is that Karena's marketing team runs generic campaigns that reach only 2--5\% of players and spends about 60 million baht a month. Casual players receive esports announcements and non-buyers receive item sales. A segment label lets each message go to the group that wants it. Table~\ref{tab:t2-playbook} turns the four segments into actions; the medians come from the training data and the shares from our test predictions.
 
 \begin{table}[H]\centering\small
-\caption{Business actions by player segment.}\label{tab:t2-playbook}
 \begin{tabular}{@{}L{.12\linewidth}L{.10\linewidth}L{.17\linewidth}L{.50\linewidth}@{}}
 \toprule
 \textbf{Segment} & \textbf{Test share} & \textbf{Median hours / THB} & \textbf{Suggested use} \\
@@ -265,11 +264,12 @@ The situation in the brief is that Karena's marketing team runs generic campaign
 3 Whale & 14.4\% & 2{,}015 / 45.1k & VIP service, early access to rare items; no blanket discount codes. \\
 \bottomrule
 \end{tabular}
+\caption{Business actions by player segment.}\label{tab:t2-playbook}
 \end{table}
 
 \paragraph{Cost of an error.} Not every mistake is equally harmful. The most common confusions are neighbours that share one trait (Grinder to Casual, Whale to Social), so a wrong campaign is usually partly relevant rather than irrelevant. The costly mistakes are Whales who are handled as Social players and miss VIP treatment (14\% of Whales) and the reverse, expensive concierge offers sent to players who will not respond. A practical design would send high-touch offers only to predictions with a top probability above a threshold, for example 0.9, which covers 31\% of players at 94.8\% accuracy, and use the general campaign for the rest. Macro F1 does not choose this threshold, because it weights all classes equally, whereas the real cost of missing a Whale is far larger than that of missing a Casual player. A production system should weight the errors by their revenue.
 
-\paragraph{Deployment caveats.} The model relies on features that move with time (spending, login recency), and a segment is not a fixed trait, so predictions need a regular refresh, for example monthly. The label noise (estimated at 2.8\%, about 3\% in truth) means that even a perfect model will look wrong on a few percent of players; marketing tests should compare segment campaigns against a control group instead of reading single predictions as truth. Finally, the data is synthetic: the uplift of three to four times that the brief anticipates has to be measured on live players before it informs budgets.
+\paragraph{Deployment caveats.} The model relies on features that move with time (spending, login recency), and a segment is not a fixed trait, so predictions need a regular refresh, for example monthly. The label noise (estimated at 2.8\%, about 3\% in truth) means that even a perfect model will look wrong on a few percent of players; marketing tests should compare segment campaigns against a control group instead of reading single predictions as truth. Finally, the uplift of three to four times that the brief anticipates has to be measured on live players before it informs budgets.
 
 \endgroup
 \end{document}
