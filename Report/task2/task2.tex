@@ -1,6 +1,8 @@
 \documentclass[../main.tex]{subfiles}
 \begin{document}
 \graphicspath{{figures/}{task2/figures/}}
+\begingroup
+\captionsetup[table]{justification=raggedright,singlelinecheck=false}
 
 \subsection{Task 2: Player Segment Classification (macro F1)}
 \label{sec:t2}
@@ -18,10 +20,12 @@ We asked four questions. How unbalanced are the classes? Which columns carry any
 
 \paragraph{Class balance and missingness.} Figure~\ref{fig:t2-balance} counts the classes and the missing values.
 
+In panel (a), diamonds mark the class shares of the final test predictions. In panel (b), dots show the overall missing rate and shaded bars show the spread across classes.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.36\textheight,keepaspectratio]{fig_t2_balance_missing.png}
-\caption{(a) Training class balance; diamonds mark the class shares of our final test prediction. (b) Missing rate of each kept feature overall (dot) and across the four classes (grey bar). Segment 0 is 2.6 times as frequent as segment 3, and missingness is about 7.7\% everywhere, independent of the class.}
+\caption{(a) Training class balance. (b) Feature missingness by class.}
 \label{fig:t2-balance}
 \end{figure}
 
@@ -29,21 +33,23 @@ We asked four questions. How unbalanced are the classes? Which columns carry any
 
 \paragraph{Which columns carry signal.} We scored every numeric column with a one-way ANOVA across the four segments and every categorical column with Cram\'er's V (Figure~\ref{fig:t2-signal}).
 
+The numeric panel plots $\log(1+F)$ for 34 columns. The categorical panel covers 10 columns. Orange marks the 28 retained features and grey marks the 16 dropped features.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.46\textheight,keepaspectratio]{fig_t2_feature_signal.png}
-\caption{Signal of each column against the segment. (a) $\log(1+F)$ of an ANOVA for the 34 numeric columns. (b) Cram\'er's V for the 10 categorical columns. Orange bars are the 28 kept features, grey bars the 16 dropped as noise.}
+\caption{(a) ANOVA scores for numeric features. (b) Cram\'er's V for categorical features.}
 \label{fig:t2-signal}
 \end{figure}
 
 \emph{What we see.} The columns separate into two clean groups. Every dropped numeric column has $\log(1+F)\le 1.15$ and every kept one has $\ge 3.4$. Of the ten categorical columns only \feat{loyalty_tier} (V = 0.404) and \feat{engagement_level} (V = 0.279) matter; the other eight, including \feat{region}, \feat{platform} and \feat{device_type}, have V below 0.008. Three columns are explicitly named \feat{random_metric_1..3}. \emph{What we decided.} Drop \feat{player_id} and the 16 noise columns (8 numeric, 8 categorical). That leaves 28 features, which keeps the models small and stops them from fitting noise.
 
-\paragraph{Independence given the class.} The model choice rests on one question: are the 23 continuous kept features correlated \emph{inside} a class? Figure~\ref{fig:t2-indep} compares the Spearman correlation of all rows with the class-weighted average of the four within-class correlations.
+\paragraph{Independence given the class.} The model choice rests on one question: are the 23 continuous kept features correlated \emph{inside} a class? Figure~\ref{fig:t2-indep} compares pooled Spearman correlations (left) with the class-weighted average of the four within-class matrices (right). The diagonals are masked.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t2_independence.png}
-\caption{Spearman correlation among the 23 continuous kept features (diagonal masked). Left: all rows pooled. Right: weighted mean of the four within-class matrices. Conditioning on the class removes almost all correlation.}
+\caption{Pooled and within-segment Spearman correlations.}
 \label{fig:t2-indep}
 \end{figure}
 
@@ -51,10 +57,12 @@ We asked four questions. How unbalanced are the classes? Which columns carry any
 
 \paragraph{The latent 2$\times$2 grid.} Figure~\ref{fig:t2-latent} places the class medians of playtime and spending side by side, and relates the two informative categorical columns to the segment.
 
+In panels (b) and (c), each row gives the shares of the four segments within one category level. The shares in a row sum to one.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t2_latent_2x2.png}
-\caption{(a) Median lifetime playtime and spending of each segment. (b,c) Distribution of the segment within each level of \texttt{engagement\_level} and \texttt{loyalty\_tier} (rows sum to 1).}
+\caption{(a) Segment medians for playtime and spending. (b) Segments by engagement level. (c) Segments by loyalty tier.}
 \label{fig:t2-latent}
 \end{figure}
 
@@ -64,7 +72,7 @@ We asked four questions. How unbalanced are the classes? Which columns carry any
 
 Preprocessing is deliberately small. The EDA findings translate into the decisions in Table~\ref{tab:t2-evidence}.
 
-\begin{evidencetable}{EDA evidence and the pipeline decision it motivated (task 2).}{tab:t2-evidence}
+\begin{evidencetable}{EDA findings and pipeline decisions.}{tab:t2-evidence}
 Figure~\ref{fig:t2-balance}a. Classes are 39/25/20/15\% and the metric weighs them equally & Fit an affine macro-F1 decision rule on out-of-fold probabilities instead of using \texttt{argmax}. \\
 Figure~\ref{fig:t2-balance}b. About 7.7\% missing in every feature and class & Skip a missing value in the likelihood (marginalise it); no imputation in the Naive Bayes model. \\
 Figure~\ref{fig:t2-signal}. 16 columns have no relation to the segment & Drop \feat{player_id} and the 16 noise columns; keep 28 features. \\
@@ -112,12 +120,12 @@ The final model is a three-part probabilistic blend followed by a decision rule 
 \draw[flow] (aff) -- (out);
 \node[note,anchor=north] at (5.4,-9.0) {$a_k=2/(\pi_k+q_k)$ and $b_k=-F_k/(\pi_k+q_k)$ use out-of-fold predictions only; the same values are applied to the test set};
 \end{tikzpicture}
-\caption{Task 2 pipeline from raw features to predicted segments.}
+\caption{Task 2 player segmentation pipeline.}
 \label{fig:t2-pipeline}
 \end{figure}
 
 \begin{table}[H]\centering\small
-\caption{Components of the final Task 2 model.}\label{tab:t2-models}
+\caption{Final segmentation model components.}\label{tab:t2-models}
 \begin{tabular}{@{}L{.20\linewidth}L{.09\linewidth}L{.62\linewidth}@{}}
 \toprule
 \textbf{Component} & \textbf{Weight} & \textbf{Training and settings} \\
@@ -148,7 +156,7 @@ To handle label noise, we assume that the observed label $\tilde y$ equals the l
 The score is $\text{macro F1}=\frac14\sum_{k=0}^{3}\frac{2\,\text{TP}_k}{2\,\text{TP}_k+\text{FP}_k+\text{FN}_k}$. Table~\ref{tab:t2-results} lists the out-of-fold macro F1 of each component and of the final prediction. The tuned LightGBM baseline (0.7524) was measured on the first data release, so it appears in Table~\ref{tab:t2-failed} instead and is not compared with these numbers.
 
 \begin{table}[H]\centering\small
-\caption{Out-of-fold macro F1 on the re-released Task 2 data (5 folds, seed 42, no \texttt{player\_id}).}\label{tab:t2-results}
+\caption{Out-of-fold macro F1.}\label{tab:t2-results}
 \begin{tabular}{@{}L{.50\linewidth}L{.17\linewidth}L{.22\linewidth}@{}}
 \toprule
 \textbf{Model (new data)} & \textbf{OOF macro F1} & \textbf{Difference to EM-NB alone} \\
@@ -164,12 +172,12 @@ Blend 0.87 / 0.08 / 0.05, \texttt{argmax} & 0.75798 & $+0.00032$ \\
 
 The Naive Bayes model alone reaches 0.75766 (per fold 0.7548--0.7617; three seeds 0.7577--0.7582). The two discriminative models are individually worse by 0.003--0.005 but make different mistakes, so the 0.87/0.08/0.05 blend adds 0.00032 over Naive Bayes alone, and the affine rule, which changes 2{,}056 of the 104{,}000 OOF predictions (1.98\%), adds a further 0.00028. The final pipeline reaches an OOF macro F1 of 0.75826. All numbers in this table come from the re-released data; the experiments of the failed-experiments table and the decision log are labelled ``first release'' or ``new data'' row by row, and the two releases must not be compared absolutely, because the rows were regenerated. The public leaderboard agrees in direction. On the first data release, replacing the plain Naive Bayes in Task~2 by the blend and the rule raised the public score from 0.71965 to 0.71999 (\texttt{sub\_v16b} $\to$ \texttt{sub\_v18a}), a gain of 0.00034 on the whole submission, or about 0.0017 of Task~2 macro F1 at a task weight of 0.2. The submission that this report describes, with the same Task~2 model, scored 0.87351 on the public leaderboard.
 
-\paragraph{Decision log.} Figure~\ref{fig:t2-decision-log} lists every Task~2 experiment, with the metric each number measures. The rows are in \texttt{data/decision\_log\_t2.csv}.
+\paragraph{Decision log.} Figure~\ref{fig:t2-decision-log} shows each experiment's score change, with one panel per metric family. Green marks retained experiments, grey marks discarded experiments, and red hatching marks experiments excluded by the competition rules. The underlying rows are in \texttt{data/decision\_log\_t2.csv}.
 
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth,height=0.85\textheight,keepaspectratio]{decision_log_t2.pdf}
-\caption{Task 2 decision log: change in score (one panel per metric family) per experiment, kept versus dropped versus rule-excluded. Green = kept, grey = dropped, red hatched = excluded by the competition rules.}
+\caption{Task 2 experiment decision log.}
 \label{fig:t2-decision-log}
 \end{figure}
 
@@ -180,7 +188,7 @@ Figure~\ref{fig:t2-errors} opens up the final OOF predictions.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{fig_t2_errors.png}
-\caption{(a) Row-normalised confusion matrix of the final OOF predictions. (b) Per-class F1 with plain \texttt{argmax} on the blend versus the affine rule. (c) Predicted minus true class share. The rule shrinks the over-prediction of the Casual class from +3.0 to +1.3 points.}
+\caption{(a) Row-normalised OOF confusion matrix. (b) Per-class F1 by decision rule. (c) Predicted minus true class share.}
 \label{fig:t2-errors}
 \end{figure}
 
@@ -192,10 +200,12 @@ Figure~\ref{fig:t2-errors} opens up the final OOF predictions.
 
 \paragraph{Ceiling.} Tuning, richer models and extra components all landed within 0.001 of the Naive Bayes score. We read this as a data ceiling. The generator gives conditionally independent features and a flip rate of about 3\% (2.8\% as estimated by EM); even a perfect model of the latent class would mislabel that fraction of the rows, and the overlapping tails cost the rest. A learning curve supports the reading. Figure~\ref{fig:t2-lc} trains the histogram Naive Bayes on a growing share of each fold's training part (first-release data, three seeds). Macro F1 rises from 0.7460 at 8{,}320 rows to 0.7518 at 20{,}800, 0.7539 at 41{,}600, 0.7550 at 62{,}400 and 0.7557 at 83{,}200 rows, so each doubling of the data brings less (about $+0.0018$ for the last one), and the extrapolation to unlimited data leaves about 0.002 of headroom. The EM variant leads at small sizes (0.7472 against 0.7460 at 10\%) and the two merge at full size. Within the noise of one data set (about $\pm0.002$ for macro F1 on this many rows) we are therefore at the feature-only ceiling.
 
+The learning curves show the mean and standard deviation over the three seeds. The plotted values come from experiment E11 (\texttt{data/t2\_learning\_curve.csv}).
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=.8\linewidth]{fig_t2_learning_curve.png}
-\caption{Learning curve of the histogram Naive Bayes with and without the label-noise EM (first-release data; mean and standard deviation over 3 seeds). Hand-entered from the experiment log E11 in \texttt{data/t2\_learning\_curve.csv}.}
+\caption{Naive Bayes learning curves with and without EM.}
 \label{fig:t2-lc}
 \end{figure}
 
@@ -208,8 +218,10 @@ Figure~\ref{fig:t2-errors} opens up the final OOF predictions.
 
 \paragraph{Models that lost to Naive Bayes.} Table~\ref{tab:t2-failed} lists the other experiments. Flexible discriminative models gained nothing from their capacity: LightGBM \citep{lightgbm} fit its training data to 0.7925 yet scored 0.7524 out of fold, and histogram gradient boosting and XGBoost \citep{xgboost} reached about 0.750 and 0.7498. Models that need more parameters than the generator provides (QDA) lost clearly. Specialist models, blends and extra tuning all tied with the final model within the noise bar of 0.001, so we kept the simplest member.
 
+In the Data column, \emph{old} denotes the first release and \emph{new} the 12 November re-release. Codes E$n$ identify research experiments. Scores marked $^\dagger$ are from nested or multi-seed runs against the first-release final score of 0.7562.
+
 \begin{table}[H]\centering\small
-\caption{Task 2 experiments that did not beat the final model. ``Data'' says which release the number was measured on: \emph{old} = first release, \emph{new} = 12 November re-release. Experiment codes E$n$ refer to our research log. Rows marked $^\dagger$ are scores of nested or multi-seed runs against the final 0.7562 (old).}\label{tab:t2-failed}
+\caption{Task 2 experiment results.}\label{tab:t2-failed}
 \begin{tabular}{@{}L{.30\linewidth}L{.07\linewidth}L{.17\linewidth}L{.36\linewidth}@{}}
 \toprule
 \textbf{Experiment} & \textbf{Data} & \textbf{Macro F1} & \textbf{Why it was dropped} \\
@@ -242,7 +254,7 @@ Class prior estimated from test predictions \citep{saerens} & old & no shift fou
 The situation in the brief is that Karena's marketing team runs generic campaigns that reach only 2--5\% of players and spends about 60 million baht a month. Casual players receive esports announcements and non-buyers receive item sales. A segment label lets each message go to the group that wants it. Table~\ref{tab:t2-playbook} turns the four segments into actions; the medians come from the training data and the shares from our test predictions.
 
 \begin{table}[H]\centering\small
-\caption{From segment to action. Medians are training medians; shares are predicted shares of the test players.}\label{tab:t2-playbook}
+\caption{Business actions by player segment.}\label{tab:t2-playbook}
 \begin{tabular}{@{}L{.12\linewidth}L{.10\linewidth}L{.17\linewidth}L{.50\linewidth}@{}}
 \toprule
 \textbf{Segment} & \textbf{Test share} & \textbf{Median hours / THB} & \textbf{Suggested use} \\
@@ -259,4 +271,5 @@ The situation in the brief is that Karena's marketing team runs generic campaign
 
 \paragraph{Deployment caveats.} The model relies on features that move with time (spending, login recency), and a segment is not a fixed trait, so predictions need a regular refresh, for example monthly. The label noise (estimated at 2.8\%, about 3\% in truth) means that even a perfect model will look wrong on a few percent of players; marketing tests should compare segment campaigns against a control group instead of reading single predictions as truth. Finally, the data is synthetic: the uplift of three to four times that the brief anticipates has to be measured on live players before it informs budgets.
 
+\endgroup
 \end{document}
