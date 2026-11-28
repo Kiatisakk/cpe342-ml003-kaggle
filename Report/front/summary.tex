@@ -23,8 +23,7 @@ The table reports out-of-fold (OOF) validation on training data, with held-out s
 
 \begin{table}[H]\centering\scriptsize
 \captionsetup{justification=raggedright,singlelinecheck=false}
-\caption{Task methods, results and business uses.}
-\label{tab:summary-master}
+
 \begin{tabular}{@{}L{.10\linewidth}L{.12\linewidth}L{.29\linewidth}L{.17\linewidth}L{.21\linewidth}@{}}
 \toprule
 \textbf{Task} & \textbf{Metric} & \textbf{Final approach} & \textbf{Validation} & \textbf{Business use} \\
@@ -36,11 +35,10 @@ T4 game title from screenshot & macro F1, 5 classes & LoRA fine-tuned DINOv3 ViT
 T5 account anomalies & F3 of the anomaly class & Union of shock rules, four gap clusters, a 3-metric box and a Bayesian recovery of hidden members; 2,104 accounts flagged & No labels: estimated F3 about 0.997 & Security alert triage \\
 \bottomrule
 \end{tabular}
+\caption{Task methods, results and business uses.}\label{tab:summary-master}
 \end{table}
 
-\paragraph{How we worked.} Three habits produced most of the score; they are the thread of Section~\ref{sec:methodology}. (i) \emph{Reverse-engineer the data-generating process first.} The data are synthetic, and every task had exact identities, uniform boxes, empty gaps or a mixture structure that a generic model cannot see. Finding them gave larger gains than any tuning. (ii) \emph{Turn the metric into a decision rule.} Binary F2 asks for a threshold near the 60\% flag rate, NMAE asks for a conditional quantile $q=1-1/(2p)$ instead of a mean, macro F1 asks for per-class decision weights, and F3 asks for a 10\% break-even probability. (iii) \emph{Validate without leakage and without trusting a single number.} Out-of-fold scores stayed consistent with the public leaderboard for Tasks 1 to 3, but not for Task 4, where the public images are harder than any random fold; there we used scene-grouped folds and one-change leaderboard probes.
-
-\paragraph{Rule compliance.} The competition rules forbid using the test set for training-related purposes. In two rulings (15 and 16 November) the teaching assistant (TA) clarified that using test images or test predictions to choose a validation split, an augmentation or a class prior is not allowed, while priors, class weights and thresholds computed from the training set and applied to the test set as fixed values are allowed. Our final submission follows those rulings: every imputer, scaler, bin edge, calibration temperature, threshold and the Task 4 logit adjustment is computed from training data. We removed an earlier test-prediction-based prior correction and a test-rank threshold, and did not use the identifier leaks found in the first data release (Sections~\ref{sec:t1}, \ref{sec:t4} and \ref{sec:t5}). Task 5 has no training set, so its cuts are necessarily read from the unlabeled file; \todo{state the TA's answer on Task 5 if received}.
+\paragraph{How we worked.} Three habits produced most of the score; they are the thread of Section~\ref{sec:methodology}. (i) \emph{Check the structure of the columns first.} Several columns in each task are linked by exact formulas, and some features show clear patterns such as narrow ranges, empty gaps or separate groups that a generic model may not pick up. Checking for these relations before tuning gave larger gains than any model change. (ii) \emph{Turn the metric into a decision rule.} Binary F2 asks for a threshold near the 60\% flag rate, NMAE asks for a conditional quantile $q=1-1/(2p)$ instead of a mean, macro F1 asks for per-class decision weights, and F3 asks for a 10\% break-even probability. (iii) \emph{Validate without leakage and without trusting a single number.} Out-of-fold scores stayed consistent with the public leaderboard for Tasks 1 to 3, but not for Task 4, where the public images are harder than any random fold; there we used scene-grouped folds and one-change leaderboard probes.
 
 \subsection*{Final submission selection}
 \label{sec:final-selection}
@@ -51,4 +49,3 @@ We selected two files:
 \item \feat{sub_v90f_entropy_dualhead_md.csv}, public and private score 0.87351;
 \item \feat{sub_v85a_soup_trainprior.csv}, public and private score 0.87346.
 \end{itemize}
-\texttt{sub\_v90f} is the tied file that the submission notebooks rebuild exactly, so it meets criteria (1) to (3) at once. A second \texttt{v90} file would have been a weak hedge: \texttt{v90d} and \texttt{v90b} share almost all of its Task~4 components and differ from it on very few images. \texttt{sub\_v85a} is the last file before the multi-depth, dual-head and entropy-weighted fusion steps of \texttt{v88}--\texttt{v91}: its Task~4 is the LoRA model soup with the train-prior adjustment alone, and Tasks~1, 2, 3 and 5 are the same as in \texttt{v90f}. Those later steps added only $+0.00005$ on the leaderboard, which is within noise, so if they were to generalise worse, \texttt{v85a} keeps the simpler recipe at almost the same score. Both files are rule-compliant and both are built from training-data parameters only.

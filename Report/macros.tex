@@ -40,14 +40,15 @@
 
 % evidencetable: \begin{evidencetable}{caption}{label} Evidence & Decision \\ ... \end{evidencetable}
 \newenvironment{evidencetable}[2]{%
+\gdef\evtabcaption{#1}\gdef\evtablabel{#2}%
 \begin{table}[H]\centering\small
-\caption{#1}\label{#2}
 \begin{tabular}{@{}L{.38\linewidth}L{.56\linewidth}@{}}
 \toprule
 \textbf{EDA evidence} & \textbf{Pipeline decision} \\
 \midrule}{%
 \bottomrule
 \end{tabular}
+\caption{\evtabcaption}\label{\evtablabel}
 \end{table}}
 
 % ---- TikZ pipeline styles ----

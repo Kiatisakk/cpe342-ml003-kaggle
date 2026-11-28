@@ -2,12 +2,11 @@
 \section{Appendix: Section-to-Notebook Map}
 \label{sec:appendix}
 
-\paragraph{Reproducibility map.} Every task has a final-model notebook and an EDA notebook in the submission repository. Running a final-model notebook writes \texttt{taskN/taskN\_predictions.csv}; \texttt{combine\_submission.py} assembles the five files into \texttt{submission.csv} after checking that the ids run from \texttt{ANS00001} to \texttt{ANS25889}.
+\paragraph{Reproducibility map.} Every task has a final-model notebook and an EDA notebook in the submission repository (\url{https://github.com/Kiatisakk/cpe342-ml003-kaggle}). Running a final-model notebook writes \texttt{taskN/taskN\_predictions.csv}; \texttt{combine\_submission.py} assembles the five files into \texttt{submission.csv} after checking that the ids run from \texttt{ANS00001} to \texttt{ANS25889}.
 
 \begin{table}[H]\centering\small
 \captionsetup{justification=raggedright,singlelinecheck=false}
-\caption{Report sources and outputs.}
-\label{tab:appendix-map}
+
 \begin{tabular}{@{}L{.11\linewidth}L{.29\linewidth}L{.23\linewidth}L{.26\linewidth}@{}}
 \toprule
 \textbf{Section} & \textbf{Notebooks} & \textbf{Output} & \textbf{Figures} \\
@@ -21,6 +20,7 @@ Decision logs & none & none & \feat{scripts/gen_decision_logs.py} from \feat{dat
 Final file & \feat{combine_submission.py} & \texttt{submission.csv} (\feat{sub_v90f_entropy_dualhead_md.csv}, public 0.87351) & none \\
 \bottomrule
 \end{tabular}
+\caption{Report sources and outputs.}\label{tab:appendix-map}
 \end{table}
 
 \paragraph{Build instructions.} The report needs XeLaTeX (tested with MiKTeX) and the Latin Modern fonts. From the \texttt{Report} directory, \texttt{latexmk -xelatex main.tex} builds the whole report; from a task folder, \texttt{latexmk -xelatex taskN.tex} builds one task alone (the task files use the \texttt{subfiles} package). Figure scripts need Python 3 with \texttt{numpy}, \texttt{pandas} and \texttt{matplotlib}, and read the competition data from \texttt{cpe342-kaggle-main/} (the Task 5 script also accepts the environment variable \texttt{T5\_TEST\_CSV}). The decision-log charts are regenerated with \texttt{python scripts/gen\_decision\_logs.py}.
@@ -30,8 +30,7 @@ Final file & \feat{combine_submission.py} & \texttt{submission.csv} (\feat{sub_v
 
 \begin{table}[H]\centering\small
 \captionsetup{justification=raggedright,singlelinecheck=false}
-\caption{Glossary.}
-\label{tab:glossary}
+
 \begin{tabular}{@{}L{.24\linewidth}L{.70\linewidth}@{}}
 \toprule
 \textbf{Term} & \textbf{Meaning} \\
@@ -47,4 +46,5 @@ Robust $z$-score & Distance from the median in units of $1.4826\times$MAD, which
 ECDF rank alignment & Mapping each model's scores through its own OOF empirical distribution function so that models can be blended on a common 0 to 1 scale. \\
 \bottomrule
 \end{tabular}
+\caption{Glossary.}\label{tab:glossary}
 \end{table}
