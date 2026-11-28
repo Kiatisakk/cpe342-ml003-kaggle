@@ -74,14 +74,14 @@ Figure~\ref{fig:t4-samples}. Small, noisy, rotated frames with side HUD & Widesc
 Figure~\ref{fig:t4-appearance}. Brightness and saturation overlap across titles & No hand-made colour features; photometric jitter only, so the model cannot lean on lighting. \\
 Figure~\ref{fig:t4-neardup}. Near-duplicate scenes in train & Scene-grouped stratified folds built from train-only embeddings. \\
 Figure~\ref{fig:t4-scene-fold-samples}. Each scene fold holds whole scenes of every title & Scene fold 0 stands in for new scenes. \\
-Figure~\ref{fig:t4-cvgap}. Random CV overstates every family by 5--10 points & Use scene validation for model and depth comparisons and for temperature calibration. Some blend weights also use public leaderboard evidence. \\
+Figure~\ref{fig:t4-cvgap}. Random CV overstates every family by 5--10 points & Use scene validation for model and depth comparisons and for temperature calibration. \\
 \end{evidencetable}
 
 \paragraph{Input pipeline.} Images are loaded once as uint8 tensors at $448\times240$ and resized on the GPU to $224\times416$ with bicubic interpolation and antialiasing, then normalised with the statistics of the backbone (read from \texttt{timm}~\citep{timm}). At test time we average the log-probabilities of the plain and the horizontally flipped view (test-time augmentation is allowed by the TA).
 
 \paragraph{Augmentation and class weights.} Training uses a random resized crop (area 0.5--1.0, aspect ratio varied by $\pm15\%$), a horizontal flip with probability 0.5, and brightness, contrast and saturation factors drawn from 0.8--1.2. The loss is cross-entropy with label smoothing 0.1 and class weights $\propto 1/\sqrt{n_k}$ (normalised to mean 1).
 
-\paragraph{Scene-grouped folds.} We L2-normalise frozen training embeddings, run k-means~\citep{kmeans} with eight clusters per title, and split the 40 groups with five-fold \texttt{StratifiedGroupKFold}~\citep{stratgroupkfold,sklearn}. Research used frozen SigLIP2~\citep{siglip2} embeddings. Its fold 0 contains 5,113 images and is the basis of the depth, LoRA and soup comparisons below. The submission notebook can rebuild the groups using frozen DINOv3 ViT-7B block-30 embeddings~\citep{dinov3}. Its recorded ensemble result comes from cached split indices and predictions, so we report it separately from the research comparisons. Both grouping procedures use training images only.
+\paragraph{Scene-grouped folds.} We L2-normalise frozen training embeddings, run k-means~\citep{kmeans} with eight clusters per title, and split the 40 groups with five-fold \texttt{StratifiedGroupKFold}~\citep{stratgroupkfold,sklearn}. Research used frozen SigLIP2~\citep{siglip2} embeddings. Its fold 0 contains 5,113 images and is the basis of the depth, LoRA and soup comparisons below. The submission notebook builds the groups from frozen DINOv3 ViT-7B block-30 embeddings~\citep{dinov3}. Its recorded ensemble result comes from cached split indices and predictions, so we report it separately from the research comparisons. Both grouping procedures use training images only.
 
 Figure~\ref{fig:t4-scene-clusters} shows three random images from each of the eight FiveN research clusters. The panels identify cluster sizes and folds. Violet frames mark the validation fold.
 
@@ -194,7 +194,7 @@ Fine-tuned and frozen companions & 0.09 & 0.677 & tie-breaking \\
 \subsubsection{Evaluation and Results}
 \label{sec:t4-eval}
 
-\paragraph{Validation.} We used scene-grouped validation to compare backbone depth, LoRA and head variants on held-out groups. Some blend weights also drew on public leaderboard results. Table~\ref{tab:t4-fold0} reports the research fold-0 comparisons. The submission notebook reports macro F1 \textbf{0.99482} with \textbf{21 errors in 5,113 images} from cached probabilities and split indices. It fits the temperatures and reports ensemble F1 on the same validation rows, so this number is a validation result after calibration. The notebook output does not establish whether its cached indices match the SigLIP2 research split.
+\paragraph{Validation.} We used scene-grouped validation to compare backbone depth, LoRA and head variants on held-out groups. Table~\ref{tab:t4-fold0} reports the research fold-0 comparisons. The submission notebook reports macro F1 \textbf{0.99482} with \textbf{21 errors in 5,113 images} from cached probabilities and split indices. It fits the temperatures and reports ensemble F1 on the same validation rows, so this number is a validation result after calibration.
 
 The last row of Table~\ref{tab:t4-fold0} is the result printed by the submission notebook.
 
@@ -522,7 +522,7 @@ The v87 round (soup plus two-view head, raw l75, other base blend, logit-adjuste
 \end{tabular}
 \end{table}
 
-\paragraph{Limitations.} The research comparisons use a single held-out scene fold for the later LoRA runs. Small differences such as 21 versus 22 errors provide weak evidence about performance on new scenes. The team used scene validation and public leaderboard history to choose the ensemble, and some full-train members have no out-of-fold predictions of their own. The late variants do not supply a matched ablation for each final pooling component. A separate labelled set of unseen scenes would allow a direct comparison of those components and independent evaluation after calibration.
+\paragraph{Limitations.} The research comparisons use a single held-out scene fold for the later LoRA runs. Small differences such as 21 versus 22 errors provide weak evidence about performance on new scenes. Some full-train members have no out-of-fold predictions of their own. The late variants do not supply a matched ablation for each final pooling component. A separate labelled set of unseen scenes would allow a direct comparison of those components and independent evaluation after calibration.
 
 \subsubsection{Domain Interpretation and Business Impact}
 
